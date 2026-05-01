@@ -1,0 +1,10 @@
+#!/bin/bash
+# Claude Code SessionStart hook. Opt-in via .claude/automaton.enabled marker.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEMORY_DIR="$SCRIPT_DIR/../memory"
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+[[ -f "$PROJECT_DIR/.claude/automaton.enabled" ]] || exit 0
+"$SCRIPT_DIR/check-uv" >/dev/null 2>&1 || exit 0
+export WIKI_ROOT="$PROJECT_DIR"
+exec uv run --directory "$MEMORY_DIR" python -m scripts.hook_entries.session_start

@@ -1,0 +1,67 @@
+line-length = 100
+# target-version intentionally omitted — ruff reads requires-python from pyproject.toml
+
+[lint]
+select = ["ALL"]
+ignore = [
+    # Formatter conflicts — ruff handles these
+    "COM812",  # missing trailing comma
+    "ISC001",  # single-line implicit string concat
+
+    # Docstrings — not required (global CLAUDE.md policy: no comments by default)
+    "D",
+
+    # Type annotations — mypy strict covers exhaustively
+    "ANN",
+
+    # Copyright header
+    "CPY001",
+
+    # Too noisy / project-inappropriate
+    "T201",    # print — scripts legitimately use stdout
+    "ERA001",  # commented-out code — too aggressive
+    "FIX002",  # TODO fix comments
+    "TD",      # TODO format requirements
+
+    # Scripts-specific: lazy imports are a legitimate architecture pattern
+    "PLC0415",  # import-outside-toplevel
+
+    # Magic values: constants.py covers important ones; local comparisons are obvious from context
+    "PLR2004",  # magic-value-comparison
+
+    # Exception message style: scripts are not a library, verbose tracebacks fine
+    "TRY003",  # raise-vanilla-args
+    "EM101",   # raw-string-in-exception
+    "EM102",   # f-string-in-exception
+
+    # Subprocess security: internal toolset, all inputs are trusted
+    "S603",    # subprocess-without-shell-equals-true
+    "S607",    # start-process-with-partial-path
+
+    # Line length: formatter handles code; comments/strings require manual wrap — not worth it
+    "E501",
+
+    # Hardcoded temp paths: scripts legitimately use /tmp for intermediate files
+    "S108",
+]
+
+[lint.per-file-ignores]
+"tests/*" = [
+    "S101",    # assert — expected in tests
+    "SLF001",  # private member access — tests inspect internals
+    "ARG001",  # unused function arguments — pytest fixtures
+    "ARG002",  # unused method arguments — pytest fixtures
+    "PLR2004", # magic values in assertions are readable and expected
+    "S105",    # hardcoded-password — test fixtures use intentional fake creds
+    "S106",    # hardcoded-password-in-call — same
+]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-args = 8  # raised from default 5; CLI entry points legitimately have more args
+
+[format]
+quote-style = "double"
+indent-style = "space"

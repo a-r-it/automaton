@@ -1,0 +1,34 @@
+{
+  "name": "automaton",
+  "description": "Claude Code skill pack for automated development",
+  "version": "0.1.0",
+  "author": {
+    "name": "a-r-it"
+  },
+  "userConfig": {
+    "wiki_dir": {
+      "type": "string",
+      "title": "Wiki directory",
+      "description": "Wiki articles directory, relative to project root (default: wiki)",
+      "sensitive": false
+    },
+    "daily_dir": {
+      "type": "string",
+      "title": "Daily logs directory",
+      "description": "Daily conversation logs directory, relative to project root (default: daily)",
+      "sensitive": false
+    },
+    "sources_dir": {
+      "type": "string",
+      "title": "Sources directory",
+      "description": "Sources ingest directory, relative to project root (default: sources)",
+      "sensitive": false
+    },
+    "compile_after_hour": {
+      "type": "number",
+      "title": "Compile after hour",
+      "description": "Hour of day (0-23) after which compile runs (default: 18)",
+      "sensitive": false
+    }
+  }
+}

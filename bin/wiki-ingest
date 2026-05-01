@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo "usage: wiki-ingest <path>" >&2
+  exit 2
+fi
+
+SRC="$1"
+if [ ! -f "$SRC" ]; then
+  echo "wiki-ingest: not a file: $SRC" >&2
+  exit 1
+fi
+
+export WIKI_ROOT="${WIKI_ROOT:-$PWD}"
+SOURCES_DIR="${CLAUDE_PLUGIN_OPTION_SOURCES_DIR:-sources}"
+DEST="$WIKI_ROOT/$SOURCES_DIR/$(basename "$SRC")"
+
+if [ -e "$DEST" ]; then
+  echo "wiki-ingest: already in $SOURCES_DIR/: $(basename "$SRC"). Run 'automaton:wiki compile' to reprocess (or 'wiki-compile --all')." >&2
+  exit 0
+fi
+
+cp "$SRC" "$DEST"
+echo "wiki-ingest: added $(basename "$SRC") to $SOURCES_DIR/. Run 'automaton:wiki compile' to process."

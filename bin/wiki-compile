@@ -1,0 +1,10 @@
+#!/bin/bash
+# Thin wrapper: invoke scripts/compile.py in the memory uv project.
+# Exported WIKI_ROOT pins config.py's project root to the caller's cwd,
+# matching how memory/hooks/* resolve CLAUDE_PROJECT_DIR.
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEMORY_DIR="$SCRIPT_DIR/../memory"
+"$SCRIPT_DIR/check-uv" || exit $?
+export WIKI_ROOT="${WIKI_ROOT:-$PWD}"
+exec uv run --directory "$MEMORY_DIR" python -m scripts.commands.compile "$@"

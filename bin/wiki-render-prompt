@@ -1,0 +1,8 @@
+#!/bin/bash
+# Thin wrapper: render the compile prompt for the active wiki (or plugin defaults).
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEMORY_DIR="$SCRIPT_DIR/../memory"
+"$SCRIPT_DIR/check-uv" || exit $?
+export WIKI_ROOT="${WIKI_ROOT:-$PWD}"
+exec uv run --directory "$MEMORY_DIR" python -m scripts.commands.render_prompt "$@"

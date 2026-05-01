@@ -1,0 +1,15 @@
+{
+  "name": "automaton",
+  "owner": {
+    "name": "a-r-it"
+  },
+  "metadata": {
+    "description": "Claude Code skill pack for automated development"
+  },
+  "plugins": [
+    {
+      "name": "automaton",
+      "source": "./"
+    }
+  ]
+}

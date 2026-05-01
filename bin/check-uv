@@ -1,0 +1,9 @@
+#!/bin/bash
+# Standalone uv prerequisite check.
+# Exit 10 with install URL on stderr if uv is missing; exit 0 if present.
+# Called directly by the skill's step 1 and by every memory/bin/* wrapper
+# that needs uv before `exec uv run`.
+if ! command -v uv >/dev/null 2>&1; then
+    echo "uv is required but not installed. Install from https://docs.astral.sh/uv/" >&2
+    exit 10
+fi

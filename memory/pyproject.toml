@@ -1,0 +1,41 @@
+[project]
+name = "automaton-wiki"
+version = "0.1.0"
+description = "Memory compiler bundled in the automaton plugin"
+requires-python = ">=3.12"
+dependencies = [
+    "claude-agent-sdk>=0.1.29",
+    "detect-secrets>=1.4",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "tzdata>=2024.1",
+]
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.0",
+    "mypy>=1.20.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.15.11",
+    "syrupy>=4.0",
+    "types-PyYAML>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Tool configs extracted to dedicated files:
+#   ruff.toml        — ruff lint + format (target-version auto-read from requires-python)
+#   .importlinter    — import-linter contracts
+# mypy config lives here so python_version can be omitted — mypy reads the venv
+# interpreter version, which uv derives from requires-python above.
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+mypy_path = "."
+files = ["scripts", "tests"]

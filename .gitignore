@@ -1,0 +1,23 @@
+# OS / editor
+.DS_Store
+.idea/
+
+# Secrets
+.env
+.env.*
+
+# Claude Code per-user config (each user curates their own)
+.claude/
+
+# Python dependencies and caches
+__pycache__/
+memory/.venv/
+memory/.mypy_cache/
+memory/.pytest_cache/
+memory/.ruff_cache/
+
+# Wiki runtime data (per-machine, regenerated each run)
+/lint/
+/wiki/
+/sources/
+/daily/
