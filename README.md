@@ -14,8 +14,12 @@ Claude Code skill pack for automated development.
 
 ## Install
 
-```
-claude plugin install gh:a-r-it/automaton
+```bash
+# Step 1: register the marketplace
+claude plugin marketplace add a-r-it/automaton
+
+# Step 2: install the plugin
+claude plugin install automaton@automaton
 ```
 
 Reload plugins in your current session with `/reload-plugins`, or start a new session.
