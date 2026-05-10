@@ -93,7 +93,7 @@ All three start as `pending`. Each phase `TaskUpdate`s its own task as it begins
 
 `TaskUpdate → in_progress` on the Strategy task.
 
-Launch `Agent(subagent_type: "research-strategy")` with the research query as the prompt:
+Launch `Agent(subagent_type: "automaton:research-strategy")` with the research query as the prompt:
 
 ```
 RESEARCH QUERY: <$ARGUMENTS>
@@ -109,7 +109,7 @@ RESEARCH QUERY: <$ARGUMENTS>
 
 `TaskUpdate → in_progress`, subject `"Discovery (N scouts): <$ARGUMENTS>"`.
 
-Parse Strategy JSON. For each scout, launch `Agent(subagent_type: "research-scout")`. **All calls in a SINGLE message.** Use the angle name in the description (not a number).
+Parse Strategy JSON. For each scout, launch `Agent(subagent_type: "automaton:research-scout")`. **All calls in a SINGLE message.** Use the angle name in the description (not a number).
 
 Prompt per scout:
 ```
@@ -129,7 +129,7 @@ Scouts returning zero results is not an error — proceed to Analysis regardless
 
 `TaskUpdate → in_progress`, subject `"Analysis (M URLs): <$ARGUMENTS>"`.
 
-Launch `Agent(subagent_type: "research-analyst")` with:
+Launch `Agent(subagent_type: "automaton:research-analyst")` with:
 
 ```
 RESEARCH QUESTION: <$ARGUMENTS>
