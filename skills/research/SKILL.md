@@ -10,9 +10,10 @@ when_to_use: >
   "how does X compare to Y", "what's available", "is there a library for".
   Use even if the user doesn't say "search" explicitly — if answering requires
   knowledge you can't confidently verify from training data alone, run this skill.
-  Anti-triggers: codebase search (use Grep/Glob directly); reading a single
-  known URL (use WebFetch directly); synthesizing already-collected data
-  (analyze without launching new research).
+  Anti-triggers: codebase search (use Grep/Glob directly); fetching a single
+  user-provided URL to read its content (use WebFetch directly — but if the
+  task is to *discover* resources on that platform, run this skill); synthesizing
+  already-collected data (analyze without launching new research).
 argument-hint: [research query]
 allowed-tools: WebSearch WebFetch Write Glob Read TaskCreate TaskUpdate TaskList
 ---
