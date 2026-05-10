@@ -1,6 +1,10 @@
+# Git worktrees
+.worktrees/
+
 # OS / editor
 .DS_Store
 .idea/
+.playwright-mcp/
 
 # Secrets
 .env
