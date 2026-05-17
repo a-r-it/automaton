@@ -3,7 +3,7 @@
 Compile new daily logs and `sources/` entries into typed wiki articles.
 
 ```bash
-wiki-compile [--all] [--file <path>] [--dry-run]
+automaton wiki compile [--all] [--file <path>] [--dry-run]
 ```
 
 **Args:**

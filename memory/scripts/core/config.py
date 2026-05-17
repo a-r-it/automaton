@@ -1,8 +1,8 @@
 """Resolved paths + scalar settings for one process.
 
 Config is a frozen dataclass built once at entrypoint time by
-load_config(). Tests construct overrides directly; production @cli_main
-decorator injects via CliContext.
+load_config(). Pass root= explicitly in tests; omit it in production
+(load_config reads WIKI_ROOT from the environment).
 """
 
 from __future__ import annotations
@@ -11,16 +11,14 @@ import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
+from scripts.core import config_io
 from scripts.core.constants import (
     DEFAULT_COMPILE_AFTER_HOUR,
     DEFAULT_DAILY_SUBDIR,
     DEFAULT_SOURCES_SUBDIR,
     DEFAULT_WIKI_SUBDIR,
-    ENV_OPT_COMPILE_AFTER_HOUR,
-    ENV_OPT_DAILY_DIR,
-    ENV_OPT_SOURCES_DIR,
-    ENV_OPT_WIKI_DIR,
     ENV_WIKI_ROOT,
     INDEX_FILENAME,
     LIBRARIAN_DIR,
@@ -83,41 +81,46 @@ class Config:
         return self.wiki
 
 
-def load_config(*, env: dict[str, str] | None = None) -> Config:
-    """Resolve configuration from environment.
+def load_config(*, root: Path | None = None) -> Config:
+    """Resolve configuration from .automaton/config.toml.
 
-    Unset or empty WIKI_ROOT raises ConfigError instead of silently
-    falling back to Path.cwd(). This fixes the footgun documented in
-    CLAUDE.md where `cd memory/ && python scripts/...` creates a stray
-    memory/wiki/ tree. Hooks, wrappers, and skill dispatch all set
-    WIKI_ROOT explicitly.
+    If root is None, reads WIKI_ROOT from the environment. Raises
+    ConfigError when WIKI_ROOT is unset or empty. Missing config.toml
+    or absent fields fall back to defaults.
     """
-    e = env if env is not None else os.environ
-    root_str = e.get(ENV_WIKI_ROOT, "").strip()
-    if not root_str:
-        raise ConfigError(key=ENV_WIKI_ROOT, reason="unset or empty")
-    root = Path(root_str).resolve()
+    if root is None:
+        root_str = os.environ.get(ENV_WIKI_ROOT, "").strip()
+        if not root_str:
+            raise ConfigError(key=ENV_WIKI_ROOT, reason="unset or empty")
+        root = Path(root_str).resolve()
+    else:
+        root = root.resolve()
 
-    wiki_subdir = e.get(ENV_OPT_WIKI_DIR, "").strip() or DEFAULT_WIKI_SUBDIR
-    daily_subdir = e.get(ENV_OPT_DAILY_DIR, "").strip() or DEFAULT_DAILY_SUBDIR
-    sources_subdir = e.get(ENV_OPT_SOURCES_DIR, "").strip() or DEFAULT_SOURCES_SUBDIR
+    raw = config_io.read_config_toml(root)
 
-    hour_str = e.get(ENV_OPT_COMPILE_AFTER_HOUR, "").strip()
-    try:
-        hour = int(hour_str) if hour_str else DEFAULT_COMPILE_AFTER_HOUR
-    except ValueError as exc:
+    paths_raw = raw.get("paths")
+    paths: dict[str, Any] = paths_raw if isinstance(paths_raw, dict) else {}
+    compile_raw = raw.get("compile")
+    compile_cfg: dict[str, Any] = compile_raw if isinstance(compile_raw, dict) else {}
+
+    wiki_subdir = str(paths.get("wiki", "")).strip() or DEFAULT_WIKI_SUBDIR
+    daily_subdir = str(paths.get("daily", "")).strip() or DEFAULT_DAILY_SUBDIR
+    sources_subdir = str(paths.get("sources", "")).strip() or DEFAULT_SOURCES_SUBDIR
+
+    hour_raw = compile_cfg.get("after_hour", DEFAULT_COMPILE_AFTER_HOUR)
+    if not isinstance(hour_raw, int) or isinstance(hour_raw, bool):
         raise ConfigError(
-            key=ENV_OPT_COMPILE_AFTER_HOUR,
-            reason=f"not an integer: {hour_str!r}",
-        ) from exc
-    if not (0 <= hour <= 23):
+            key="compile.after_hour",
+            reason=f"not an integer: {hour_raw!r}",
+        )
+    if not (0 <= hour_raw <= 23):
         raise ConfigError(
-            key=ENV_OPT_COMPILE_AFTER_HOUR,
-            reason=f"out of range 0..23: {hour}",
+            key="compile.after_hour",
+            reason=f"out of range 0..23: {hour_raw}",
         )
 
-    scripts = Path(__file__).resolve().parent.parent  # memory/scripts/
-    compiler_root = scripts.parent  # memory/
+    scripts_dir = Path(__file__).resolve().parent.parent  # memory/scripts/
+    compiler_root = scripts_dir.parent  # memory/
     wiki = root / wiki_subdir
 
     return Config(
@@ -131,11 +134,11 @@ def load_config(*, env: dict[str, str] | None = None) -> Config:
         sources_subdir=sources_subdir,
         state_file=wiki / STATE_FILENAME,
         log_file=wiki / LOG_FILENAME,
-        scripts=scripts,
+        scripts=scripts_dir,
         compiler_root=compiler_root,
         hooks=compiler_root / "hooks",
         static_prompt_file=compiler_root / LIBRARIAN_DIR / STATIC_PROMPT_FILENAME,
-        compile_after_hour=hour,
+        compile_after_hour=hour_raw,
     )
 
 

@@ -5,7 +5,7 @@ this hook reads the knowledge base index and recent daily log, then injects
 them as additional context so Claude always "remembers" what it has learned.
 
 Configure in ``hooks/hooks.json`` (plugin-shipped); installation toggles
-the per-project ``.claude/automaton.enabled`` marker.
+the per-project ``.automaton/config.toml`` enabled flag.
 
 NOTE: session-start is the ONE entrypoint exempted from the default
 bubble-everything uncaught-exception policy. The SessionStart hook

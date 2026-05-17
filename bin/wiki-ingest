@@ -12,8 +12,15 @@ if [ ! -f "$SRC" ]; then
   exit 1
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEMORY_DIR="$SCRIPT_DIR/../memory"
 export WIKI_ROOT="${WIKI_ROOT:-$PWD}"
-SOURCES_DIR="${CLAUDE_PLUGIN_OPTION_SOURCES_DIR:-sources}"
+SOURCES_DIR=$(WIKI_ROOT="$WIKI_ROOT" uv run --directory "$MEMORY_DIR" python -c "
+import os, pathlib
+from scripts.core import config_io
+raw = config_io.read_config_toml(pathlib.Path(os.environ['WIKI_ROOT']))
+print(raw.get('paths', {}).get('sources', 'sources'))
+" 2>/dev/null || echo "sources")
 DEST="$WIKI_ROOT/$SOURCES_DIR/$(basename "$SRC")"
 
 if [ -e "$DEST" ]; then

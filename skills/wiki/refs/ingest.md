@@ -3,7 +3,7 @@
 Copy a file into `sources/` for the next compile to pick up.
 
 ```bash
-wiki-ingest <path>
+automaton wiki ingest <path>
 ```
 
 **Args:**

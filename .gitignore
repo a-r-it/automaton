@@ -1,27 +1,32 @@
-# Git worktrees
-.worktrees/
-
-# OS / editor
+# === System ===
 .DS_Store
 .idea/
-.playwright-mcp/
 
-# Secrets
+# === Environment ===
 .env
 .env.*
 
+# === AI ===
 # Claude Code per-user config (each user curates their own)
 .claude/
+.playwright-mcp/
+# automaton plugin config (project-local, never committed)
+.automaton/
 
-# Python dependencies and caches
+# === Language: Python ===
 __pycache__/
 memory/.venv/
 memory/.mypy_cache/
 memory/.pytest_cache/
 memory/.ruff_cache/
 
+# === Project ===
+# Git worktrees
+.worktrees/
 # Wiki runtime data (per-machine, regenerated each run)
 /lint/
 /wiki/
 /sources/
 /daily/
+wiki/
+sources/

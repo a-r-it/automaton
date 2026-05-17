@@ -38,6 +38,7 @@ class AgentOptions:
     permission_mode: _PermissionMode | None = None
     effort: _Effort | None = "medium"
     model: str = _SONNET
+    setting_sources: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +55,7 @@ COMPILE_OPTIONS = AgentOptions(
     system_prompt={"type": "preset", "preset": "claude_code"},
     permission_mode="acceptEdits",
     effort="medium",
+    setting_sources=("",),
 )
 
 QUERY_OPTIONS = AgentOptions(
@@ -62,6 +64,7 @@ QUERY_OPTIONS = AgentOptions(
     system_prompt={"type": "preset", "preset": "claude_code"},
     permission_mode="acceptEdits",
     effort="medium",
+    setting_sources=("",),
 )
 
 QUERY_FILEBACK_OPTIONS = AgentOptions(
@@ -70,6 +73,7 @@ QUERY_FILEBACK_OPTIONS = AgentOptions(
     system_prompt={"type": "preset", "preset": "claude_code"},
     permission_mode="acceptEdits",
     effort="medium",
+    setting_sources=("",),
 )
 
 ANALYSIS_OPTIONS = AgentOptions(
@@ -77,6 +81,7 @@ ANALYSIS_OPTIONS = AgentOptions(
     max_turns=2,
     effort="medium",  # explicitly match original flush/semantic behavior
     permission_mode=None,  # not forwarded — matches original
+    setting_sources=("",),
 )
 
 COMMIT_OPTIONS = AgentOptions(
@@ -85,6 +90,7 @@ COMMIT_OPTIONS = AgentOptions(
     model=_HAIKU,
     effort=None,  # not forwarded — matches original commit.py
     permission_mode=None,  # not forwarded — matches original commit.py
+    setting_sources=("",),
 )
 
 
@@ -114,6 +120,8 @@ async def run_agent(
         sdk_kwargs["permission_mode"] = options.permission_mode
     if options.system_prompt is not None:
         sdk_kwargs["system_prompt"] = options.system_prompt
+    if options.setting_sources is not None:
+        sdk_kwargs["setting_sources"] = list(options.setting_sources)
 
     text = ""
     cost_usd = 0.0

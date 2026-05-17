@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import Final, Literal
 
 __all__ = (
-    "AUTOMATON_MARKER_FILENAME",
-    "CLAUDE_DIR",
+    "AUTOMATON_CONFIG_DIR",
+    "AUTOMATON_CONFIG_FILENAME",
     "COMPILE_LOG_FILENAME",
     "DEFAULT_COMPILE_AFTER_HOUR",
     "DEFAULT_DAILY_SUBDIR",
@@ -19,10 +19,6 @@ __all__ = (
     "ENV_CLAUDE_INVOKED_BY",
     "ENV_CLAUDE_PROJECT_DIR",
     "ENV_FLUSH_STDERR_LOG",
-    "ENV_OPT_COMPILE_AFTER_HOUR",
-    "ENV_OPT_DAILY_DIR",
-    "ENV_OPT_SOURCES_DIR",
-    "ENV_OPT_WIKI_DIR",
     "ENV_WIKI_ROOT",
     "FLUSH_LOG_FILENAME",
     "HOOKS_DIRNAME",
@@ -49,13 +45,14 @@ __all__ = (
 # ── Source type sentinel ───────────────────────────────────────────────
 type SourceType = Literal["daily", "source"]
 
-# ── Default subdir names (fallbacks when userConfig unset) ────────────
+# ── Default subdir names (fallbacks when config.toml absent) ─────────
 DEFAULT_WIKI_SUBDIR: Final = "wiki"
 DEFAULT_DAILY_SUBDIR: Final = "daily"
 DEFAULT_SOURCES_SUBDIR: Final = "sources"
 DEFAULT_COMPILE_AFTER_HOUR: Final = 18
 
 # ── Filenames ─────────────────────────────────────────────────────────
+AUTOMATON_CONFIG_FILENAME: Final = "config.toml"
 SCHEMA_FILENAME: Final = "_schema.md"
 INDEX_FILENAME: Final = "index.md"
 LOG_FILENAME: Final = "log.md"
@@ -65,10 +62,9 @@ FLUSH_LOG_FILENAME: Final = "flush.log"
 COMPILE_LOG_FILENAME: Final = "compile.log"
 HOOKS_JSON_FILENAME: Final = "hooks.json"
 STATIC_PROMPT_FILENAME: Final = "static.md"
-AUTOMATON_MARKER_FILENAME: Final = "automaton.enabled"
 
 # ── Directory names (relative, composable under ROOT_DIR or COMPILER_ROOT) ──
-CLAUDE_DIR: Final = ".claude"
+AUTOMATON_CONFIG_DIR: Final = ".automaton"
 LIBRARIAN_DIR: Final = "librarian"
 SCHEMAS_DIR: Final = "schemas"
 HOOKS_DIRNAME: Final = "hooks"  # plugin hooks dir (not .claude/hooks/)
@@ -89,11 +85,6 @@ ENV_WIKI_ROOT: Final = "WIKI_ROOT"
 ENV_CLAUDE_PROJECT_DIR: Final = "CLAUDE_PROJECT_DIR"
 ENV_CLAUDE_INVOKED_BY: Final = "CLAUDE_INVOKED_BY"
 ENV_FLUSH_STDERR_LOG: Final = "FLUSH_STDERR_LOG"
-ENV_OPT_WIKI_DIR: Final = "CLAUDE_PLUGIN_OPTION_WIKI_DIR"
-ENV_OPT_DAILY_DIR: Final = "CLAUDE_PLUGIN_OPTION_DAILY_DIR"
-ENV_OPT_SOURCES_DIR: Final = "CLAUDE_PLUGIN_OPTION_SOURCES_DIR"
-ENV_OPT_COMPILE_AFTER_HOUR: Final = "CLAUDE_PLUGIN_OPTION_COMPILE_AFTER_HOUR"
-
 # ── Sentinel env values ───────────────────────────────────────────────
 # Value set in CLAUDE_INVOKED_BY by flush.py to prevent recursive hook firing.
 INVOKED_BY_FLUSH: Final = "memory_flush"

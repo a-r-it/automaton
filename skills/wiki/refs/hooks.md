@@ -14,7 +14,7 @@ Stop.
 ## Run
 
 ```bash
-wiki-hooks <subarg>
+automaton wiki hooks <subarg>
 ```
 
 (When subarg is empty, invoke the wrapper with no argument — it defaults to

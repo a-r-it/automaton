@@ -1,0 +1,70 @@
+#!/bin/bash
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+SKILL="${1:-}"
+CMD="${2:-}"
+if [ $# -ge 2 ]; then
+  shift 2
+else
+  shift $#
+fi
+
+_wiki_help() {
+  echo "Usage: automaton wiki <command> [args]"
+  echo ""
+  echo "Commands:"
+  echo "  compile [--all] [--dry-run]        Compile daily logs into wiki"
+  echo "  lint [--fix] [--structural]        Lint wiki articles"
+  echo "  query <question> [--save]          Query the wiki"
+  echo "  ingest <file>                      Ingest a source file"
+  echo "  setup [<subcommand>]               Set up wiki for this project"
+  echo "  hooks [<subcommand>]               Show/manage hook status"
+  echo "  render-prompt [--plugin-defaults]  Render the compile prompt"
+}
+
+_help() {
+  echo "Usage: automaton <skill> [command] [args]"
+  echo ""
+  echo "Skills:"
+  echo "  wiki    compile|lint|query|ingest|setup|hooks|render-prompt"
+  echo "  research  (coming soon)"
+  echo ""
+  echo "Run 'automaton <skill>' for skill-specific help."
+}
+
+_run() {
+  local cmd="$1"
+  local target="$SCRIPT_DIR/$cmd"
+  shift
+  if [ ! -f "$target" ] || [ ! -x "$target" ]; then
+    echo "automaton: '$cmd' not found or not executable" >&2
+    exit 1
+  fi
+  exec "$target" "$@"
+}
+
+case "$SKILL" in
+  wiki)
+    case "$CMD" in
+      compile)        _run wiki-compile "$@" ;;
+      lint)           _run wiki-lint "$@" ;;
+      query)          _run wiki-query "$@" ;;
+      ingest)         _run wiki-ingest "$@" ;;
+      setup)          _run wiki-setup "$@" ;;
+      hooks)          _run wiki-hooks "$@" ;;
+      render-prompt)  _run wiki-render-prompt "$@" ;;
+      ""|--help|-h)   _wiki_help; exit 0 ;;
+      *)              echo "automaton wiki: unknown command '$CMD'" >&2
+                      _wiki_help >&2; exit 1 ;;
+    esac ;;
+  research)
+    echo "automaton: 'research' skill not yet available via CLI" >&2
+    exit 1 ;;
+  ""|--help|-h)
+    _help; exit 0 ;;
+  *)
+    echo "automaton: unknown skill '$SKILL'" >&2
+    _help >&2; exit 1 ;;
+esac

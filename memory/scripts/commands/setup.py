@@ -18,8 +18,7 @@ from scripts.commands import hooks
 from scripts.core import errors
 from scripts.core.cli import CliContextP, cli_main
 from scripts.core.constants import (
-    AUTOMATON_MARKER_FILENAME,
-    CLAUDE_DIR,
+    AUTOMATON_CONFIG_DIR,
     HOOKS_DIRNAME,
     HOOKS_JSON_FILENAME,
     LIBRARIAN_DIR,
@@ -77,15 +76,7 @@ def cmd_hooks(*, enable: bool, root: Path) -> int:
     """Toggle hooks marker. Returns 0 on success; raises EnvError on write failure."""
     if not enable:
         return 0
-    try:
-        hooks.set_marker(root, enabled=True)
-    except OSError as exc:
-        raise errors.EnvError(
-            exit_code=ExitCode.HOOKS_TOGGLE,
-            action="hooks --enable",
-            underlying=str(exc),
-            hint="check filesystem permissions in .claude/",
-        ) from exc
+    hooks.set_marker(root, enabled=True)
     return 0
 
 
@@ -96,7 +87,7 @@ def cmd_gitignore_eligible(config: Config, root: Path) -> int:
         return 0
 
     cfg = config
-    candidates = (cfg.wiki_subdir, cfg.daily_subdir, cfg.sources_subdir)
+    candidates = (AUTOMATON_CONFIG_DIR, cfg.wiki_subdir, cfg.daily_subdir, cfg.sources_subdir)
     eligible = [name for name in candidates if not _is_ignored(root, name)]
     print(json.dumps({"git": True, "eligible": eligible}))
     return 0
@@ -133,8 +124,9 @@ def cmd_gitignore_apply(root: Path, dirs: list[str]) -> int:
 
 def cmd_summary(config: Config, root: Path) -> int:
     """Print the final Wiki-activated block. Always returns 0."""
-    marker = root / CLAUDE_DIR / AUTOMATON_MARKER_FILENAME
-    status = "enabled" if marker.is_file() else "disabled"
+    from scripts.core import config_io as _config_io
+
+    status = "enabled" if _config_io.read_enabled(root) else "disabled"
     cfg = config
     wiki = cfg.wiki_subdir
     daily = cfg.daily_subdir
@@ -147,7 +139,7 @@ def cmd_summary(config: Config, root: Path) -> int:
   External sources:   {sources}/
   Log file:           {wiki}/flush.log
 
-Hooks: {status}  (marker: {CLAUDE_DIR}/{AUTOMATON_MARKER_FILENAME})
+Hooks: {status}  (config: .automaton/config.toml)
 
 Toggle hooks later:
   automaton:wiki hooks enable

@@ -6,91 +6,75 @@ import argparse
 import sys
 from pathlib import Path
 
-from scripts.core import errors
+from scripts.core import config_io, errors
 from scripts.core.cli import CliContextP, cli_main
-from scripts.core.constants import AUTOMATON_MARKER_FILENAME, CLAUDE_DIR
 from scripts.core.exit_codes import ExitCode
 
 __all__ = ("cmd_disable", "cmd_enable", "cmd_status", "main", "set_marker")
 
-_MARKER_PATH = Path(CLAUDE_DIR) / AUTOMATON_MARKER_FILENAME
-
 
 def set_marker(root: Path, *, enabled: bool) -> bool:
-    """Create/remove marker at root/.claude/automaton.enabled.
+    """Toggle enabled field in root/.automaton/config.toml.
 
-    Returns True if state changed, False if already in the target state.
-    Raises OSError on filesystem failure; callers wrap in EnvError.
+    Returns True if state changed.
+    enable=True with no config.toml → raises EnvError (run setup first).
+    disable with no config.toml → returns False (already disabled).
+    Raises EnvError on filesystem failure.
     """
-    marker = root / _MARKER_PATH
-    existed = marker.is_file()
-    if enabled:
-        if existed:
+    try:
+        return config_io.update_enabled(root, enabled=enabled)
+    except errors.ConfigError:
+        if not enabled:
             return False
-        marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.touch()
-        return True
-    if not existed:
-        return False
-    marker.unlink()
-    return True
+        raise errors.EnvError(
+            exit_code=ExitCode.HOOKS_TOGGLE,
+            action="hooks enable",
+            underlying="config.toml not found",
+            hint="run `automaton:wiki setup` to create .automaton/config.toml",
+        ) from None
+    except OSError as exc:
+        raise errors.EnvError(
+            exit_code=ExitCode.HOOKS_TOGGLE,
+            action=f"hooks {'enable' if enabled else 'disable'}",
+            underlying=str(exc),
+            hint="check filesystem permissions in .automaton/",
+        ) from exc
 
 
 def cmd_status(root: Path) -> int:
-    """Print current hook marker state. Always returns 0."""
-    state = "enabled" if (root / _MARKER_PATH).is_file() else "disabled"
+    """Print current hook state. Always returns 0."""
+    state = "enabled" if config_io.read_enabled(root) else "disabled"
     print(f"hooks: {state}")
     return 0
 
 
 def cmd_enable(root: Path) -> int:
-    """Create the hooks marker. Returns 0; idempotent. Raises EnvError on filesystem failure."""
-    try:
-        changed = set_marker(root, enabled=True)
-    except OSError as exc:
-        raise errors.EnvError(
-            exit_code=ExitCode.HOOKS_TOGGLE,
-            action="hooks enable",
-            underlying=str(exc),
-            hint="check filesystem permissions in .claude/",
-        ) from exc
+    """Set enabled=true in config.toml. Returns 0; idempotent."""
+    changed = set_marker(root, enabled=True)
     print("hooks: enabled" + ("" if changed else " (already)"))
     return 0
 
 
 def cmd_disable(root: Path) -> int:
-    """Remove the hooks marker. Returns 0; idempotent. Raises EnvError on filesystem failure."""
-    try:
-        changed = set_marker(root, enabled=False)
-    except OSError as exc:
-        raise errors.EnvError(
-            exit_code=ExitCode.HOOKS_TOGGLE,
-            action="hooks disable",
-            underlying=str(exc),
-            hint="check filesystem permissions in .claude/",
-        ) from exc
+    """Set enabled=false in config.toml. Returns 0; idempotent."""
+    changed = set_marker(root, enabled=False)
     print("hooks: disabled" + ("" if changed else " (already)"))
     return 0
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Return argparse parser with --root and subcommand choices.
-
-    --root defaults to None; the body resolves it via ctx.config.root so
-    parser construction does not require WIKI_ROOT to be set.
-    """
     shared = argparse.ArgumentParser(add_help=False)
     shared.add_argument("--root", type=Path, default=None)
 
     parser = argparse.ArgumentParser(
         prog="hooks",
-        description="Toggle automaton hooks marker",
+        description="Toggle automaton hooks in .automaton/config.toml",
         parents=[shared],
     )
     sub = parser.add_subparsers(dest="cmd")
-    sub.add_parser("enable", help="Create .claude/automaton.enabled", parents=[shared])
-    sub.add_parser("disable", help="Remove .claude/automaton.enabled", parents=[shared])
-    sub.add_parser("status", help="Print current marker state", parents=[shared])
+    sub.add_parser("enable", help="Set enabled=true in .automaton/config.toml", parents=[shared])
+    sub.add_parser("disable", help="Set enabled=false in .automaton/config.toml", parents=[shared])
+    sub.add_parser("status", help="Print current enabled state", parents=[shared])
     return parser
 
 

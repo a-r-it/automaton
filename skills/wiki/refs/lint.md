@@ -3,7 +3,7 @@
 Run structural and semantic checks on the wiki.
 
 ```bash
-wiki-lint [--structural]
+automaton wiki lint [--structural]
 ```
 
 **Args:**

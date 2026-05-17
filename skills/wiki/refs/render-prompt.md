@@ -5,8 +5,8 @@ Render the compile prompt exactly as it would be sent to the compile agent.
 Useful for debugging — "what does the agent actually see?"
 
 ```bash
-wiki-render-prompt
-wiki-render-prompt --plugin-defaults
+automaton wiki render-prompt
+automaton wiki render-prompt --plugin-defaults
 ```
 
 **Args:**

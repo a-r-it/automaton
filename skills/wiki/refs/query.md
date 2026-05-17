@@ -3,7 +3,7 @@
 Ask a question against the wiki.
 
 ```bash
-wiki-query "<question>" [--save]
+automaton wiki query "<question>" [--save]
 ```
 
 **Args:**

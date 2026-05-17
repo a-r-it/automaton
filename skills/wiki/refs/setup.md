@@ -4,7 +4,7 @@
 
 Dispatch by `ARGUMENTS`:
 
-- No extra args (bare `setup`) → **Guided bootstrap** section below (7-step task list).
+- No extra args (bare `setup`) → **Guided bootstrap** section below (8-step task list).
 - `setup refresh-schemas` → **Refresh schemas** section.
 - `setup verify` → **Verify** section.
 - `setup summary` → **Summary** section.
@@ -14,14 +14,15 @@ Dispatch by `ARGUMENTS`:
 
 ## Guided bootstrap
 
-Before any step runs, create the full task list via `TaskCreate` (all six at once):
+Before any step runs, create the full task list via `TaskCreate` (all seven at once):
 
 1. Check uv installed
 2. Sync Python dependencies
-3. Create wiki directories
-4. Enable automation hooks
-5. Configure .gitignore
-6. Verify environment
+3. Configure project paths
+4. Create wiki directories
+5. Enable automation hooks
+6. Configure .gitignore
+7. Verify environment
 
 Before each step, `TaskUpdate → in_progress`; after, `→ completed`.
 
@@ -38,16 +39,43 @@ check-uv
 ## 2. Sync dependencies
 
 ```bash
-wiki-setup sync-deps
+automaton wiki setup sync-deps
 ```
 
-## 3. Initialize wiki tree
+## 3. Configure project paths
+
+Ask the user for their preferred directory names using `AskUserQuestion`:
+
+- Question: "Configure automaton wiki paths for this project (press Enter to accept defaults):"
+- Collect four values with defaults shown:
+  - Wiki directory (default: `wiki`)
+  - Daily logs directory (default: `daily`)
+  - Sources directory (default: `sources`)
+  - Compile after hour 0–23 (default: `18`)
+
+Then write `.automaton/config.toml` using the Write tool with this exact structure, substituting the user's answers (use defaults for any field the user left blank):
+
+```toml
+enabled = false
+
+[paths]
+wiki = "<wiki_dir>"
+daily = "<daily_dir>"
+sources = "<sources_dir>"
+
+[compile]
+after_hour = <compile_hour>
+```
+
+Note: `enabled = false` at this stage — step 5 (hooks) will update it to `true` if the user chooses Enable.
+
+## 4. Initialize wiki tree
 
 ```bash
-wiki-setup init-tree
+automaton wiki setup init-tree
 ```
 
-## 4. Hooks
+## 5. Hooks
 
 Ask via `AskUserQuestion`:
 
@@ -56,35 +84,28 @@ Ask via `AskUserQuestion`:
   - `Enable` — session-start loads the wiki index into context, session-end flushes the transcript to the daily-logs directory, pre-compact captures context before auto-compaction.
   - `Skip` — hooks stay registered but do nothing. Toggle later with `automaton:wiki hooks enable` / `automaton:wiki hooks disable`.
 
-Then, if the user chose `Enable`:
-
-```bash
-wiki-setup hooks --enable
-```
+If the user chose `Enable`:
+Update `.automaton/config.toml` — change `enabled = false` to `enabled = true` (keep all other fields unchanged).
 
 If the user chose `Skip`:
+Mark the task completed with note "user skipped hook activation". Do not modify the config file.
 
-```bash
-wiki-setup hooks --skip
-```
-
-(Mark the task completed with a note "user skipped hook activation".)
-
-## 5. Gitignore
+## 6. Gitignore
 
 (a) Probe eligibility:
 
 ```bash
-wiki-setup gitignore-eligible
+automaton wiki setup gitignore-eligible
 ```
 
 Parse the stdout JSON `{"git": bool, "eligible": [str]}`. If `git` is false or
 `eligible` is empty, mark the task completed with note "nothing to offer" and
-skip to step 6.
+skip to step 7.
 
 (b) Build `AskUserQuestion` options dynamically from `eligible`, each labelled
 `"<dir>/ — <purpose>"`, plus a `Nothing` option. Purposes:
 
+- `.automaton/` — local plugin config (per-project paths and enabled state, not for VCS)
 - `wiki/` — compiled knowledge base (LLM-owned articles + indexes)
 - `daily/` — raw conversation logs (append-only)
 - `sources/` — external reference docs (immutable after ingest)
@@ -95,22 +116,22 @@ Question text: "Which of these should be added to `.gitignore`?"
 (c) If the user selected at least one directory (and not only `Nothing`):
 
 ```bash
-wiki-setup gitignore-apply --dirs=<csv>
+automaton wiki setup gitignore-apply --dirs=<csv>
 ```
 
 If the user selected only `Nothing` or nothing at all, skip the apply and mark
 the task completed with note "user declined".
 
-## 6. Verify
+## 7. Verify
 
 ```bash
-wiki-setup verify
+automaton wiki setup verify
 ```
 
-## 7. Print summary
+## 8. Print summary
 
 ```bash
-wiki-setup summary
+automaton wiki setup summary
 ```
 
 ---
@@ -127,7 +148,7 @@ version, prints a diff and prompts `[k]eep (default) / [o]verwrite`. New
 schemas (directories with no `_schema.md`) are written without prompting.
 
 ```bash
-wiki-setup refresh-schemas
+automaton wiki setup refresh-schemas
 ```
 
 Behavior:
@@ -144,8 +165,8 @@ Running non-interactively (e.g. as part of an orchestrated flow), pipe the
 desired answer:
 
 ```bash
-printf 'o\n' | wiki-setup refresh-schemas   # overwrite single diff
-printf 'k\n' | wiki-setup refresh-schemas   # keep user version
+printf 'o\n' | automaton wiki setup refresh-schemas   # overwrite single diff
+printf 'k\n' | automaton wiki setup refresh-schemas   # keep user version
 ```
 
 ---
@@ -157,7 +178,7 @@ Runs environment sanity checks: `hooks.json` validity and `wiki-compile
 the user verbatim.
 
 ```bash
-wiki-setup verify
+automaton wiki setup verify
 ```
 
 Use after a refactor touching `bin/hook-*`, `hooks/hooks.json`,
@@ -171,7 +192,7 @@ Prints the activation summary (hooks marker state, wiki tree presence,
 git-tracked directories) for the current project.
 
 ```bash
-wiki-setup summary
+automaton wiki setup summary
 ```
 
 Read-only; always exits 0.
