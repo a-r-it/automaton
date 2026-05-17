@@ -62,6 +62,8 @@ case "$SKILL" in
   research)
     echo "automaton: 'research' skill not yet available via CLI" >&2
     exit 1 ;;
+  --version|-v)
+    _run automaton-version ;;
   ""|--help|-h)
     _help; exit 0 ;;
   *)
