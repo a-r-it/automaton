@@ -1,6 +1,6 @@
 ---
 name: research-analyst
-description: Fetches URLs, verifies facts against primary sources, and writes a structured research report to disk.
+description: Verifies facts from a provided URL list and writes a structured report. Requires a pre-built URL list — does not search.
 model: sonnet
 maxTurns: 40
 tools: WebFetch, WebSearch, Write, Read, Bash

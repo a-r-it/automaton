@@ -1,10 +1,8 @@
 ---
 name: research
 description: >
-  Use this skill for ANY web research — mandatory whenever an answer requires
-  current external sources that cannot be verified from training data alone.
-  Anti-hallucination pipeline: scouts find URLs, analyst WebFetches and tags
-  [VERIFIED]/[UNCERTAIN], report saved to disk.
+  Use for ANY web research — mandatory whenever an answer requires current
+  external sources that cannot be verified from training data alone.
 when_to_use: >
   Trigger phrases: "find", "look up", "search for", "are there", "what is X",
   "how does X compare to Y", "what's available", "is there a library for".

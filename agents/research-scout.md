@@ -1,6 +1,6 @@
 ---
 name: research-scout
-description: Executes web search queries for a given research angle and returns a structured list of URLs with titles and snippets.
+description: Executes search queries for a given angle and returns a URL list. Requires a pre-defined angle and query list — does not plan or analyze.
 model: haiku
 maxTurns: 4
 tools: WebSearch

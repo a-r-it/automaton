@@ -1,7 +1,7 @@
 {
   "name": "automaton",
   "description": "Claude Code skill pack for automated development",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "a-r-it"
   }
