@@ -19,6 +19,12 @@ memory/.venv/
 memory/.mypy_cache/
 memory/.pytest_cache/
 memory/.ruff_cache/
+engine/.venv/
+engine/.mypy_cache/
+engine/.pytest_cache/
+engine/.ruff_cache/
+engine/build/
+*.egg-info/
 
 # === Project ===
 # Git worktrees

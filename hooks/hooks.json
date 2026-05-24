@@ -1,5 +1,5 @@
 {
-  "description": "Wiki memory-compiler hooks. Each script exits 0 silently when the opt-in marker .claude/automaton.enabled is absent, so enabling the plugin is safe in projects without wiki setup.",
+  "description": "Plugin lifecycle hooks: wiki memory-compiler (exits 0 when .claude/automaton.enabled absent) and caveman terse-mode injector (reads [caveman] from .automaton/config.toml, defaults to enabled=true mode=full).",
   "hooks": {
     "SessionStart": [
       {
@@ -8,6 +8,11 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook-session-start",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/skills/caveman/scripts/hook-activate",
             "timeout": 10
           }
         ]

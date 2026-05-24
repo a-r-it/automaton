@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE_DIR="$SCRIPT_DIR/../engine"
+"$SCRIPT_DIR/check-uv" >/dev/null 2>&1 || exit 0
+exec uv run --quiet --directory "$ENGINE_DIR" python -m automaton_config "$@"

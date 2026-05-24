@@ -5,16 +5,4 @@ set -euo pipefail
 if [ $# -lt 1 ]; then exit 1; fi
 # Fast exit if config file doesn't exist — avoids uv startup overhead
 if [ ! -f "$1/.automaton/config.toml" ]; then exit 1; fi
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MEMORY_DIR="$SCRIPT_DIR/../memory"
-AUTOMATON_PROJECT_ROOT="$1" uv run --directory "$MEMORY_DIR" python -c "
-import os, sys, tomllib, pathlib
-root = pathlib.Path(os.environ['AUTOMATON_PROJECT_ROOT'])
-config_path = root / '.automaton' / 'config.toml'
-try:
-    with open(config_path, 'rb') as f:
-        cfg = tomllib.load(f)
-    sys.exit(0 if cfg.get('enabled') is True else 1)
-except (FileNotFoundError, tomllib.TOMLDecodeError):
-    sys.exit(1)
-"
+exec automaton-config is-enabled --root "$1"

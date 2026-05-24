@@ -1,0 +1,30 @@
+[build-system]
+requires = ["uv_build>=0.5,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[project]
+name = "automaton-config"
+version = "0.1.0"
+description = "Config I/O for the automaton plugin"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.1",
+    "pytest>=8.0",
+    "ruff>=0.15.11",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+mypy_path = "."
+files = ["automaton_config", "tests"]

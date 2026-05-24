@@ -14,11 +14,12 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from automaton_config import CONFIG_DIR as AUTOMATON_CONFIG_DIR
+
 from scripts.commands import hooks
 from scripts.core import errors
 from scripts.core.cli import CliContextP, cli_main
 from scripts.core.constants import (
-    AUTOMATON_CONFIG_DIR,
     HOOKS_DIRNAME,
     HOOKS_JSON_FILENAME,
     LIBRARIAN_DIR,

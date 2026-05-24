@@ -34,10 +34,25 @@ wheels = [
 ]
 
 [[package]]
+name = "automaton-config"
+version = "0.1.0"
+source = { directory = "../engine" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.20.1" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.15.11" },
+]
+
+[[package]]
 name = "automaton-wiki"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "automaton-config" },
     { name = "claude-agent-sdk" },
     { name = "detect-secrets" },
     { name = "python-dotenv" },
@@ -58,6 +73,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "automaton-config", directory = "../engine" },
     { name = "claude-agent-sdk", specifier = ">=0.1.29" },
     { name = "detect-secrets", specifier = ">=1.4" },
     { name = "python-dotenv", specifier = ">=1.0.0" },

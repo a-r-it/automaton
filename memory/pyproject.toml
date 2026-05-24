@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Memory compiler bundled in the automaton plugin"
 requires-python = ">=3.12"
 dependencies = [
+    "automaton-config",
     "claude-agent-sdk>=0.1.29",
     "detect-secrets>=1.4",
     "python-dotenv>=1.0.0",
@@ -39,3 +40,6 @@ strict = true
 warn_unreachable = true
 mypy_path = "."
 files = ["scripts", "tests"]
+
+[tool.uv.sources]
+automaton-config = { path = "../engine" }

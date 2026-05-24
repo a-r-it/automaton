@@ -1,0 +1,37 @@
+line-length = 100
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "COM812",
+    "ISC001",
+    "D",
+    "ANN",
+    "CPY001",
+    "T201",
+    "ERA001",
+    "FIX002",
+    "TD",
+    "PLC0415",
+    "PLR2004",
+    "TRY003",
+    "EM101",
+    "EM102",
+    "E501",
+]
+
+[lint.per-file-ignores]
+"tests/*" = [
+    "S101",
+    "SLF001",
+    "ARG001",
+    "ARG002",
+    "PLR2004",
+]
+
+[lint.mccabe]
+max-complexity = 10
+
+[format]
+quote-style = "double"
+indent-style = "space"
