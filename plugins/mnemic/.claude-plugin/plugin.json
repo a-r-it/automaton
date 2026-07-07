@@ -1,0 +1,6 @@
+{
+  "name": "mnemic",
+  "description": "Per-project knowledge base that compiles Claude conversations into typed wiki articles.",
+  "version": "0.3.0",
+  "author": { "name": "a-r-it" }
+}

@@ -1,16 +1,15 @@
 # automaton
 
-Claude Code skill pack for automated development.
+A Claude Code **marketplace** named `automaton` that ships three plugins:
+
+- **research** (`research:`) — structured web research workflow
+- **mnemic** (`mnemic:`) — per-project knowledge base that captures Claude Code conversations into typed wiki articles; queryable and compounds over time
+- **development** (`development:`) — OpenSpec / dev-workflow toolkit: brainstorming, planning, TDD, debugging, code review, gates
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv/) — Python package manager (install once globally)
-- Python 3.12+
-
-## Skills
-
-- **wiki** — captures Claude Code conversations into typed wiki articles; queryable knowledge base that compounds over time
-- **research** — structured web research workflow
+- [uv](https://docs.astral.sh/uv/) — Python package manager (install once globally; required by `mnemic`)
+- Python 3.12+ (for `mnemic`)
 
 ## Install
 
@@ -18,8 +17,10 @@ Claude Code skill pack for automated development.
 # Step 1: register the marketplace
 claude plugin marketplace add a-r-it/automaton
 
-# Step 2: install the plugin
-claude plugin install automaton@automaton
+# Step 2: install the plugin(s) you want
+claude plugin install research@automaton
+claude plugin install mnemic@automaton
+claude plugin install development@automaton
 ```
 
 Reload plugins in your current session with `/reload-plugins`, or start a new session.
@@ -27,10 +28,10 @@ Reload plugins in your current session with `/reload-plugins`, or start a new se
 ## Quick start
 
 ```
-automaton:wiki setup    # first-time setup per project; creates wiki/, daily/, sources/ and enables capture hooks
-automaton:wiki help     # all wiki commands
+mnemic:wiki setup    # first-time setup per project; creates wiki/, daily/, sources/ and enables capture hooks
+mnemic:wiki help     # all wiki commands
 
-automaton:research "what are the best practices for X in 2025"
+research:research "what are the best practices for X in 2025"
 ```
 
 ## Sources & inspiration

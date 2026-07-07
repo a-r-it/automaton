@@ -1,0 +1,12 @@
+development
+==============
+
+A Claude-Code-only merge-port of two upstream projects, used under the MIT License:
+
+- Superpowers — Jesse Vincent (obra)
+  https://github.com/obra/superpowers  (v5.1.0)
+- Superpowers Extended CC — pcvelz
+  https://github.com/pcvelz/superpowers  (commit 20c0b1ed)
+
+This port strips multi-harness support, merges both sources, and is maintained by a-r-it.
+Original copyrights and the MIT License of the upstream projects are retained.

@@ -1,0 +1,6 @@
+{
+  "name": "research",
+  "description": "Web research workflow — anti-hallucination plan→scout→verify→synthesize pipeline.",
+  "version": "0.1.0",
+  "author": { "name": "a-r-it" }
+}

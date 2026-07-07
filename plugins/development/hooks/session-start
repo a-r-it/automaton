@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# SessionStart hook for development plugin
+
+set -euo pipefail
+
+# Determine plugin root directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Model routing opt-in notice — when the project carries the routing file, or
+# a user-level default exists at ~/.automaton/development/ (project file wins).
+# Knowledge is injected here so agents never depend on voluntarily reading docs.
+#
+# SECURITY (defense-in-depth): the routing file lives under .automaton/ (git-
+# ignored, project-local, user-authored — NOT repo-shared), so the "hostile PR
+# commits a routing.json" vector no longer applies. We still harden cheaply, in
+# case the file is a stray symlink or holds malformed/oversized content: (1)
+# refuse to follow a symlink for the PROJECT file — it could point at a secret;
+# (2) never embed raw bytes — run the file through sanitize_routing.py, which
+# keeps ONLY known tier keys with model-id-shaped values and re-emits a canonical
+# object. Stray prose, injection payloads, secret-file contents, and oversized
+# files all collapse to {} and produce no notice. The user-level file is handled
+# the same way, but symlinks there are allowed (unambiguously the user's own).
+# (The consumer hook pre-agent-model-routing parses the file with jq separately
+# and is not a context-injection sink.)
+#
+# Residual (accepted): only the final path component is symlink-checked, not a
+# symlinked PARENT dir. The content canonicalizer bounds any such leak to at
+# most three model-id-charset strings (no secret shape survives), so a full
+# realpath-under-root check (non-portable on stock macOS) is not worth it.
+routing_message=""
+routing_file="${PWD}/.automaton/development/model-routing.json"
+routing_label=".automaton/development/model-routing.json"
+routing_project=1   # symlink-guard the project file as defense-in-depth (see SECURITY note)
+if [ ! -f "$routing_file" ]; then
+    # User-level default: applies to every project without a project file.
+    routing_file="${HOME}/.automaton/development/model-routing.json"
+    routing_label="~/.automaton/development/model-routing.json"
+    routing_project=0
+fi
+if [ -f "$routing_file" ] && { [ "$routing_project" -eq 0 ] || [ ! -L "$routing_file" ]; }; then
+    routing_mapping=$(python3 "${SCRIPT_DIR}/lib/sanitize_routing.py" "$routing_file" 2>/dev/null || echo '{}')
+    [ -z "$routing_mapping" ] && routing_mapping='{}'
+    if [ "$routing_mapping" != "{}" ]; then
+        routing_message="\n\n<model-routing-active>This project routes plan-execution subagents to cheaper models. Mapping (${routing_label}): ${routing_mapping}. Plan-time: every plan task's json:metadata fence MUST carry \"modelTier\" — \"mechanical\" (1-2 files, complete spec with code in the steps, no design judgment; most tasks in a well-specified plan), \"standard\" (multi-file integration, pattern matching, debugging), or \"frontier\" (design/architecture judgment). Tie-break: spec completeness wins. Dispatch-time: pass the Agent model parameter resolved from the in-progress task's tier via the mapping (\"inherit\" = omit the parameter); spec and code-quality reviewers use the \"standard\" tier's model; the final whole-plan reviewer (after all tasks complete) stays at session level — omit the model parameter. A task metadata \"model\" pin overrides its tier. Plugin gates enforce both sides (kill switch: DEVELOPMENT_ROUTING_GUARD=0). Full rationale: docs/model-routing-flow.md in the plugin repo.</model-routing-active>"
+    fi
+fi
+
+# Commit-strategy opt-in notice — when the project carries the workflow file,
+# or a user-level default exists at ~/.automaton/development/ (project file wins
+# entirely, no merging — same lookup pattern as model-routing.json).
+# The file is project-local content (git-ignored); sanitize as defense-in-depth with the same
+# LC_ALL=C tr -d '[:cntrl:]' + iconv -c pass as the routing file BEFORE
+# parsing. Stripping control bytes also collapses the file to one line, which
+# makes the single-line sed extraction immune to multi-line JSON formatting.
+# The extracted value is only compared, never embedded in the notice.
+# Absent file, absent key, or any value other than "at-end" → no notice,
+# byte-identical default behavior (per-task commits). Fail-open throughout.
+workflow_message=""
+workflow_file="${PWD}/.automaton/development/workflow.json"
+workflow_label=".automaton/development/workflow.json"
+if [ ! -f "$workflow_file" ]; then
+    # User-level default: applies to every project without a project file.
+    workflow_file="${HOME}/.automaton/development/workflow.json"
+    workflow_label="~/.automaton/development/workflow.json"
+fi
+if [ -f "$workflow_file" ]; then
+    workflow_config=$(LC_ALL=C tr -d '[:cntrl:]' < "$workflow_file" 2>/dev/null | iconv -f UTF-8 -t UTF-8 -c 2>/dev/null || echo '{}')
+    commit_strategy=$(printf '%s' "$workflow_config" | sed -n 's/.*"commitStrategy"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ "$commit_strategy" = "at-end" ]; then
+        workflow_message="\n\n<workflow-config-active>This project sets \"commitStrategy\": \"at-end\" (${workflow_label}): one commit per plan, not per task. Plan-time: OMIT the per-task Commit step from every task's Steps; instead add ONE final task — 'Commit the full implementation' — at the end of the plan, blockedBy ALL implementation tasks, whose steps stage and commit the entire change set as a single commit. Dispatch-time: tell implementer subagents NOT to commit (replace the 'Commit your work' instruction with: do not commit; leave all changes in the working tree — the coordinator's final task makes the single commit). Reviewers review the uncommitted working-tree diff instead of per-task commit SHAs. This notice is the only delivery mechanism — no enforcement gate backs it; comply at plan-writing and dispatch time. Default (per-task commits) resumes when the file or key is removed. Full rationale: docs/workflow-config-flow.md in the plugin repo.</workflow-config-active>"
+    fi
+fi
+
+# Read developer-workflow content
+developer_workflow_content=$(cat "${PLUGIN_ROOT}/skills/developer-workflow/SKILL.md" 2>&1 || echo "Error reading developer-workflow skill")
+
+# Escape string for JSON embedding using bash parameter substitution.
+# Each ${s//old/new} is a single C-level pass - orders of magnitude
+# faster than the character-by-character loop this replaces.
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+developer_workflow_escaped=$(escape_for_json "$developer_workflow_content")
+routing_escaped=$(escape_for_json "$routing_message")
+workflow_escaped=$(escape_for_json "$workflow_message")
+session_context="<EXTREMELY_IMPORTANT>\nYou have developer workflows.\n\n**Below is the full content of your 'development:developer-workflow' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${developer_workflow_escaped}\n\n${routing_escaped}${workflow_escaped}\n</EXTREMELY_IMPORTANT>"
+
+# Output context injection as JSON.
+# Uses printf instead of heredoc to work around bash 5.3+ heredoc hang.
+# See: https://github.com/obra/superpowers/issues/571
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+
+exit 0

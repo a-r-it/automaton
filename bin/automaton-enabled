@@ -1,9 +1,0 @@
-#!/bin/bash
-# Exit 0 if .automaton/config.toml has enabled=true, else exit 1.
-# Usage: automaton-enabled <project_root>
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ $# -lt 1 ]; then exit 1; fi
-# Fast exit if config file doesn't exist — avoids uv startup overhead
-if [ ! -f "$1/.automaton/config.toml" ]; then exit 1; fi
-exec "$SCRIPT_DIR/automaton-config" is-enabled --root "$1"

@@ -12,18 +12,20 @@
 .playwright-mcp/
 # automaton plugin config (project-local, never committed)
 .automaton/
+# superpowers SDD scratch (progress ledger, task briefs/reports) — any level
+.superpowers/
 
 # === Language: Python ===
 __pycache__/
-memory/.venv/
-memory/.mypy_cache/
-memory/.pytest_cache/
-memory/.ruff_cache/
-engine/.venv/
-engine/.mypy_cache/
-engine/.pytest_cache/
-engine/.ruff_cache/
-engine/build/
+plugins/mnemic/memory/.venv/
+plugins/mnemic/memory/.mypy_cache/
+plugins/mnemic/memory/.pytest_cache/
+plugins/mnemic/memory/.ruff_cache/
+plugins/mnemic/engine/.venv/
+plugins/mnemic/engine/.mypy_cache/
+plugins/mnemic/engine/.pytest_cache/
+plugins/mnemic/engine/.ruff_cache/
+plugins/mnemic/engine/build/
 *.egg-info/
 
 # === Project ===
@@ -36,3 +38,6 @@ engine/build/
 /daily/
 wiki/
 sources/
+# Pinned upstream superpowers repos (obra/pcvelz) kept locally for diffing —
+# embedded git repos; also ignored here (root) so they stay out of the release tree
+plugins/development/.ref/

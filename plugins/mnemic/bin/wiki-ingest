@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ $# -ne 1 ]; then
+  echo "usage: wiki-ingest <path>" >&2
+  exit 2
+fi
+
+SRC="$1"
+if [ ! -f "$SRC" ]; then
+  echo "wiki-ingest: not a file: $SRC" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MEMORY_DIR="$SCRIPT_DIR/../memory"
+export WIKI_ROOT="${WIKI_ROOT:-$PWD}"
+SOURCES_DIR=$(WIKI_ROOT="$WIKI_ROOT" uv run --directory "$MEMORY_DIR" python -c "
+import os, pathlib
+from scripts.core import config_io
+raw = config_io.read_config_toml(pathlib.Path(os.environ['WIKI_ROOT']))
+print(raw.get('paths', {}).get('sources', 'sources'))
+" 2>/dev/null || echo "sources")
+DEST="$WIKI_ROOT/$SOURCES_DIR/$(basename "$SRC")"
+
+if [ -e "$DEST" ]; then
+  echo "wiki-ingest: already in $SOURCES_DIR/: $(basename "$SRC"). Run 'mnemic:wiki compile' to reprocess (or 'wiki-compile --all')." >&2
+  exit 0
+fi
+
+cp "$SRC" "$DEST"
+echo "wiki-ingest: added $(basename "$SRC") to $SOURCES_DIR/. Run 'mnemic:wiki compile' to process."

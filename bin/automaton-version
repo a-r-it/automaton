@@ -1,6 +1,0 @@
-#!/bin/bash
-set -uo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-version=$(grep '"version"' "$SCRIPT_DIR/../.claude-plugin/plugin.json" | sed 's/.*"version": *"\([^"]*\)".*/\1/')
-echo "automaton $version"

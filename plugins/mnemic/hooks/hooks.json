@@ -1,0 +1,14 @@
+{
+  "description": "mnemic lifecycle hooks: wiki memory-compiler (exits 0 unless the project mnemic config has enabled=true, gated via bin/mnemic-enabled).",
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "", "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook-session-start", "timeout": 10 } ] }
+    ],
+    "PreCompact": [
+      { "matcher": "", "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook-pre-compact", "timeout": 10 } ] }
+    ],
+    "SessionEnd": [
+      { "matcher": "", "hooks": [ { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/bin/hook-session-end", "timeout": 10 } ] }
+    ]
+  }
+}

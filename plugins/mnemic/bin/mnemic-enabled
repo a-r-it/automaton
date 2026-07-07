@@ -1,0 +1,10 @@
+#!/bin/bash
+# Exit 0 if mnemic is enabled for the project (user<-project merge), else exit 1.
+# Usage: mnemic-enabled <project_root>
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ $# -lt 1 ]; then exit 1; fi
+REL=".automaton/mnemic/config.toml"
+# Fast exit only if NEITHER scope file exists — avoids uv startup overhead
+if [ ! -f "$HOME/$REL" ] && [ ! -f "$1/$REL" ]; then exit 1; fi
+exec "$SCRIPT_DIR/mnemic-config" is-enabled --root "$1"
