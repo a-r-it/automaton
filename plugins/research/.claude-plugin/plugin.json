@@ -1,6 +1,6 @@
 {
   "name": "research",
-  "description": "Web research workflow — anti-hallucination plan→scout→verify→synthesize pipeline.",
-  "version": "0.1.0",
+  "description": "Web research workflows — anti-hallucination plan→scout→verify→synthesize pipeline + panel-based business research. V2 produces a single self-contained HTML report with embedded provenance JSON, zero external dependencies.",
+  "version": "0.2.0",
   "author": { "name": "a-r-it" }
 }

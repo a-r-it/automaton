@@ -2,14 +2,14 @@
 
 A Claude Code **marketplace** named `automaton` that ships three plugins:
 
-- **research** (`research:`) — structured web research workflow
+- **research** (`research:`) — structured web research: the `research:research` skill (scout/analyst agents) plus `research:business-research`, a multi-analyst business panel that produces a single self-contained, source-verified HTML report
 - **mnemic** (`mnemic:`) — per-project knowledge base that captures Claude Code conversations into typed wiki articles; queryable and compounds over time
 - **development** (`development:`) — OpenSpec / dev-workflow toolkit: brainstorming, planning, TDD, debugging, code review, gates
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) — Python package manager (install once globally; required by `mnemic`)
-- Python 3.12+ (for `mnemic`)
+- Python 3.12+ for `mnemic`; Python 3.13+ on `PATH` as `python3` for `research`'s business-research scripts (stdlib only — nothing installed)
 
 ## Install
 
@@ -32,6 +32,7 @@ mnemic:wiki setup    # first-time setup per project; creates wiki/, daily/, sour
 mnemic:wiki help     # all wiki commands
 
 research:research "what are the best practices for X in 2025"
+research:business-research "is it worth building a PDF spell-check Telegram bot"
 ```
 
 ## Sources & inspiration
