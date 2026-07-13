@@ -37,12 +37,13 @@ class Labels(TypedDict):
     methodology_verified_findings: str  # format template: {verified}, {total}
     methodology_verified_data_points: str  # format template: {verified}, {total}
     reachability: dict[str, str]
-    fact_pack_source: str
     limitations_verification_drops: str
     dropped_finding_unsupported: str  # format template: {qualified_id}
     dropped_finding_contradicted: str  # format template: {qualified_id}
+    dropped_finding_disputed: str  # format template: {qualified_id}
     dropped_data_point_unsupported: str  # format template: {qualified_id}
     dropped_data_point_contradicted: str  # format template: {qualified_id}
+    dropped_data_point_disputed: str  # format template: {qualified_id}
     dropped_source_blocked: str  # format template: {qualified_id}
     dropped_source_dead: str  # format template: {qualified_id}
 
@@ -73,15 +74,15 @@ LABELS: dict[str, Labels] = {
         "severity": {"high": "высокая", "medium": "средняя", "low": "низкая"},
         "found_by_verifier": "источник найден верификатором",
         "methodology_pipeline": (
-            "Конвейер: сбор фактов → панель аналитиков → "
+            "Конвейер: постановка задачи → исследование агентами → "
             "независимая верификация → синтез → рендеринг."
         ),
         "methodology_col_id": "Роль",
         "methodology_col_model": "Модель",
         "methodology_col_selection_rule": "Правило отбора",
-        "methodology_count_sources": "Источников собрано панелью",
-        "methodology_count_findings": "Находок собрано панелью",
-        "methodology_count_data_points": "Показателей собрано панелью",
+        "methodology_count_sources": "Источников собрано агентами",
+        "methodology_count_findings": "Находок собрано агентами",
+        "methodology_count_data_points": "Показателей собрано агентами",
         "methodology_verified_findings": (
             "Находок подтверждено верификацией: {verified} из {total}"
         ),
@@ -93,7 +94,6 @@ LABELS: dict[str, Labels] = {
             "blocked": "источник заблокирован",
             "dead": "источник недоступен",
         },
-        "fact_pack_source": "источник фактпака",
         "limitations_verification_drops": "Исключено по результатам верификации",
         "dropped_finding_unsupported": (
             "{qualified_id}: находка не подтверждена верификацией"
@@ -101,11 +101,19 @@ LABELS: dict[str, Labels] = {
         "dropped_finding_contradicted": (
             "{qualified_id}: находка противоречит источникам по данным верификации"
         ),
+        "dropped_finding_disputed": (
+            "{qualified_id}: находка оспорена — верификация нашла как подтверждающие, "
+            "так и противоречащие источники"
+        ),
         "dropped_data_point_unsupported": (
             "{qualified_id}: показатель не подтверждён верификацией"
         ),
         "dropped_data_point_contradicted": (
             "{qualified_id}: показатель противоречит источникам по данным верификации"
+        ),
+        "dropped_data_point_disputed": (
+            "{qualified_id}: показатель оспорен — верификация нашла как подтверждающие, "
+            "так и противоречащие источники"
         ),
         "dropped_source_blocked": (
             "{qualified_id}: источник был заблокирован при верификации"
@@ -139,15 +147,15 @@ LABELS: dict[str, Labels] = {
         "severity": {"high": "high", "medium": "medium", "low": "low"},
         "found_by_verifier": "source found by verifier",
         "methodology_pipeline": (
-            "Pipeline: fact-pack → analyst panel → independent "
+            "Pipeline: scoping → agent research → independent "
             "verification → synthesis → render."
         ),
         "methodology_col_id": "Role",
         "methodology_col_model": "Model",
         "methodology_col_selection_rule": "Selection rule",
-        "methodology_count_sources": "Sources collected by the panel",
-        "methodology_count_findings": "Findings collected by the panel",
-        "methodology_count_data_points": "Data points collected by the panel",
+        "methodology_count_sources": "Sources collected by the agents",
+        "methodology_count_findings": "Findings collected by the agents",
+        "methodology_count_data_points": "Data points collected by the agents",
         "methodology_verified_findings": "Findings verified: {verified} of {total}",
         "methodology_verified_data_points": "Data points verified: {verified} of {total}",
         "reachability": {
@@ -155,17 +163,24 @@ LABELS: dict[str, Labels] = {
             "blocked": "source blocked",
             "dead": "source dead",
         },
-        "fact_pack_source": "fact-pack source",
         "limitations_verification_drops": "Dropped by verification",
         "dropped_finding_unsupported": "{qualified_id}: finding not supported by verification",
         "dropped_finding_contradicted": (
             "{qualified_id}: finding contradicted by verification"
+        ),
+        "dropped_finding_disputed": (
+            "{qualified_id}: finding disputed — verification found both supporting and "
+            "contradicting evidence"
         ),
         "dropped_data_point_unsupported": (
             "{qualified_id}: data point not supported by verification"
         ),
         "dropped_data_point_contradicted": (
             "{qualified_id}: data point contradicted by verification"
+        ),
+        "dropped_data_point_disputed": (
+            "{qualified_id}: data point disputed — verification found both supporting and "
+            "contradicting evidence"
         ),
         "dropped_source_blocked": "{qualified_id}: source was blocked during verification",
         "dropped_source_dead": "{qualified_id}: source was dead during verification",

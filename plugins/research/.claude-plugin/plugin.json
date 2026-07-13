@@ -1,6 +1,6 @@
 {
   "name": "research",
-  "description": "Web research workflows — anti-hallucination plan→scout→verify→synthesize pipeline + panel-based business research. V2 produces a single self-contained HTML report with embedded provenance JSON, zero external dependencies.",
-  "version": "0.2.0",
+  "description": "Web research workflows — anti-hallucination plan→scout→verify→synthesize pipeline + multi-agent business research. It produces a single self-contained HTML report with embedded provenance JSON, zero external dependencies.",
+  "version": "0.2.1",
   "author": { "name": "a-r-it" }
 }

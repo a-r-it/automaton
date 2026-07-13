@@ -23,18 +23,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class SourceMention:
-    """One panelist's, verifier's, or the fact-pack's own reference to a
-    source, folded into a `MergedSource` by canonical URL (spec §7 dedup
-    rule, §8 item 8). `panelist` is `None` only for `origin == "fact-pack"`
-    entries (the registry carries no panelist). `reachability` is populated
-    only for `origin == "panel"` mentions (drawn from that panelist's own
-    verification document); it stays `None` for verifier and fact-pack
-    mentions, which carry no reachability concept of their own."""
+    """One agent's or verifier's own reference to a source, folded into a
+    `MergedSource` by canonical URL (spec §7 dedup rule, §8 item 8).
+    `reachability` is populated only for `origin == "panel"` mentions (drawn
+    from that agent's own verification document); it stays `None` for
+    verifier mentions, which carry no reachability concept of their own."""
 
-    origin: str  # "panel" | "verifier" | "fact-pack"
-    panelist: str | None
+    origin: str  # "panel" | "verifier"
+    agent: str
     local_id: str
-    detail: str  # panel/verifier mentions: the source's "usage" text; fact-pack: its "status"
+    detail: str  # the source's "usage" text
     reachability: str | None
 
 
@@ -92,10 +90,10 @@ def _sorted_by_numeric_id[T: Mapping[str, object]](items: Sequence[T]) -> list[T
     by numeric id ascending — a document's own list order is otherwise
     whatever the LLM emitted, and the determinism contract (spec §7)
     requires every list reaching the HTML to be sorted. Generic over `T`
-    (bound to `Mapping[str, object]`, satisfied by `PanelSource`,
-    `VerificationAdditionalSource`, `EnvelopeSource`, and any other
-    `models.py` document TypedDict) so callers get back the same concrete
-    item type they passed in, rather than a widened `Mapping`."""
+    (bound to `Mapping[str, object]`, satisfied by `AgentSource`,
+    `VerificationAdditionalSource`, and any other `models.py` document
+    TypedDict) so callers get back the same concrete item type they passed
+    in, rather than a widened `Mapping`."""
     def _id_rank(item: Mapping[str, object]) -> int:
         identifier = item["id"]
         return _numeric_suffix(identifier) if isinstance(identifier, str) else 0
@@ -103,24 +101,24 @@ def _sorted_by_numeric_id[T: Mapping[str, object]](items: Sequence[T]) -> list[T
 
 
 def merged_sources(run: Run) -> list[MergedSource]:
-    """Deduplicates every source the run relied on — panel sources, verifier
-    `additional_sources`, and the fact-pack registry — by canonical URL
-    (spec §7, §8 item 8). Mentions are folded in a fixed walk: roster order
-    over each survivor's own panel sources first, then roster order again
-    over each survivor's verifier `additional_sources`, then the fact-pack
-    registry; within one document, sources are taken in ascending numeric-id
-    order. The *first* mention encountered in that walk wins the merged
-    entry's `title`/`publisher` (spec: "first by roster order wins" — every
-    raw variant stays intact in the embedded provenance block). The returned
-    list is sorted by canonical URL ascending — the renderer's own
-    deterministic order for the appendix (spec §7)."""
+    """Deduplicates every source the run relied on — panel sources and
+    verifier `additional_sources` — by canonical URL (spec §7, §8 item 8).
+    Mentions are folded in a fixed walk: roster order over each survivor's
+    own panel sources first, then roster order again over each survivor's
+    verifier `additional_sources`; within one document, sources are taken
+    in ascending numeric-id order. The *first* mention encountered in that
+    walk wins the merged entry's `title`/`publisher` (spec: "first by
+    roster order wins" — every raw variant stays intact in the embedded
+    provenance block). The returned list is sorted by canonical URL
+    ascending — the renderer's own deterministic order for the appendix
+    (spec §7)."""
     roster = [e for e in run.manifest.get("roster", []) if isinstance(e, dict)]
     groups: dict[str, _SourceGroup] = {}
 
-    # Three distinct loop variables (not one reused `src`): each walk yields a
-    # different models TypedDict (PanelSource / VerificationAdditionalSource /
-    # EnvelopeSource), and mypy correctly rejects redefining one variable
-    # across incompatible TypedDict types now that Run's fields are concrete.
+    # Two distinct loop variables (not one reused `src`): each walk yields a
+    # different models TypedDict (AgentSource / VerificationAdditionalSource),
+    # and mypy correctly rejects redefining one variable across incompatible
+    # TypedDict types now that Run's fields are concrete.
     for entry in roster:
         survivor = run.survivors[entry["id"]]
         reachability_by_id = {s["id"]: s["reachability"]
@@ -128,7 +126,7 @@ def merged_sources(run: Run) -> list[MergedSource]:
         for panel_src in _sorted_by_numeric_id(survivor["panel"]["sources"]):
             _fold_mention(groups, url=panel_src["url"], title=panel_src["title"],
                           publisher=panel_src["publisher"],
-                          mention=SourceMention(origin="panel", panelist=entry["id"],
+                          mention=SourceMention(origin="panel", agent=entry["id"],
                                                  local_id=panel_src["id"],
                                                  detail=panel_src["usage"],
                                                  reachability=reachability_by_id[panel_src["id"]]))
@@ -138,17 +136,10 @@ def merged_sources(run: Run) -> list[MergedSource]:
         for verif_src in _sorted_by_numeric_id(survivor["verification"]["additional_sources"]):
             _fold_mention(groups, url=verif_src["url"], title=verif_src["title"],
                           publisher=verif_src["publisher"],
-                          mention=SourceMention(origin="verifier", panelist=entry["id"],
+                          mention=SourceMention(origin="verifier", agent=entry["id"],
                                                  local_id=verif_src["id"],
                                                  detail=verif_src["usage"],
                                                  reachability=None))
-
-    for registry_src in _sorted_by_numeric_id(run.registry.get("sources", [])):
-        _fold_mention(groups, url=registry_src["url"], title=registry_src["title"],
-                      publisher=registry_src["publisher"],
-                      mention=SourceMention(origin="fact-pack", panelist=None,
-                                             local_id=registry_src["id"],
-                                             detail=registry_src["status"], reachability=None))
 
     used_anchors: set[str] = set()
     merged: list[MergedSource] = []
@@ -164,7 +155,7 @@ def merged_sources(run: Run) -> list[MergedSource]:
 def render_sources(run: Run) -> str:
     """Sources appendix (spec §8 item 8): every `MergedSource` from
     `merged_sources`, already sorted by canonical URL ascending, each with
-    every contributing panelist's/verifier's/fact-pack's own mention."""
+    every contributing agent's/verifier's own mention."""
     lang = _lang(run.manifest)
     labels = LABELS[lang]
     entries = []
@@ -185,10 +176,10 @@ def render_sources(run: Run) -> str:
 def _fold_mention(groups: dict[str, _SourceGroup], *, url: str, title: str, publisher: str,
                    mention: SourceMention) -> None:
     """Folds one `SourceMention` into `groups` (keyed by canonical URL),
-    used by `merged_sources` while walking panel sources, verifier
-    `additional_sources`, and the fact-pack registry in a fixed order. The
-    first call for a given canonical URL fixes that entry's `title`/
-    `publisher` (spec: "first by roster order wins")."""
+    used by `merged_sources` while walking panel sources and verifier
+    `additional_sources` in a fixed order. The first call for a given
+    canonical URL fixes that entry's `title`/`publisher` (spec: "first by
+    roster order wins")."""
     curl = json_io.canonical_url(url)
     group = groups.get(curl)
     if group is None:
@@ -219,13 +210,11 @@ def _source_anchor_id(canonical_url: str, index: int, used: set[str]) -> str:
 
 def _render_mention(mention: SourceMention, labels: Labels) -> str:
     """One `<li>` in a `MergedSource`'s mention list: its qualified id, an
-    origin tag (found-by-verifier / fact-pack / reachability), and its
-    usage/status detail text."""
-    qualified = f"{mention.panelist}:{mention.local_id}" if mention.panelist else mention.local_id
+    origin tag (found-by-verifier / reachability), and its usage detail
+    text."""
+    qualified = f"{mention.agent}:{mention.local_id}"
     if mention.origin == "verifier":
         tag = f'<span class="tag tag-verifier">{esc(labels["found_by_verifier"])}</span>'
-    elif mention.origin == "fact-pack":
-        tag = f'<span class="tag tag-fact-pack">{esc(labels["fact_pack_source"])}</span>'
     elif mention.reachability is not None:
         tag = (f'<span class="tag tag-reachability-{esc(mention.reachability)}">'
                f'{esc(labels["reachability"][mention.reachability])}</span>')

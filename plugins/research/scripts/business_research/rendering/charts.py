@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, NotRequired, cast
 
-from business_research.models import PanelDataPoint, PanelFinding
+from business_research.models import AgentDataPoint, AgentFinding
 from business_research.rendering.localization import LABELS, _lang, _wrap_section, esc, fmt_num
 from business_research.rendering.sources import MergedSource, _numeric_suffix, merged_sources
 
@@ -38,10 +38,10 @@ _BAR_ROW_GAP = 12
 _GRIDLINE_FRACTIONS = (0.0, 1 / 3, 2 / 3, 1.0)
 
 
-class ChartPoint(PanelDataPoint):
-    """One panel data point (spec §5 fields, inherited from
-    `models.PanelDataPoint`) decorated with the rendering-only fields
-    `_verified_chart_points` adds: `panelist`, `entity_label`,
+class ChartPoint(AgentDataPoint):
+    """One agent data point (spec §5 fields, inherited from
+    `models.AgentDataPoint`) decorated with the rendering-only fields
+    `_verified_chart_points` adds: `agent`, `entity_label`,
     `source_qualified`/`source_href` (the footer citation, `None` when
     unresolved), and — only once a bar-consuming pass (`_consume_bar_geo`/
     `_consume_bar_entity`) has claimed the point — `bar_label`. `bar_label`
@@ -50,7 +50,7 @@ class ChartPoint(PanelDataPoint):
     single `points` field type that's honest about "present only for bar
     charts" is simpler than a kind-discriminated union here."""
 
-    panelist: str
+    agent: str
     entity_label: str
     source_qualified: str | None
     source_href: str | None
@@ -60,12 +60,12 @@ class ChartPoint(PanelDataPoint):
 @dataclass(frozen=True)
 class Chart:
     """One deterministic SVG chart (spec §8 item 5, chart-compatibility
-    rules), produced by `group_charts` from a single panelist's verified
+    rules), produced by `group_charts` from a single agent's verified
     data points. `kind` is `"line"` or `"bar"`. `label` is a ready-to-escape
     display heading built from the group's held-fixed dimensions (metric,
     unit, and whichever of period/geography stayed fixed for this group).
     `points` are the group's own decorated point dicts (spec §5 fields plus
-    `panelist`, `entity_label`, `source_qualified`/`source_href` — see
+    `agent`, `entity_label`, `source_qualified`/`source_href` — see
     `_verified_chart_points` — and, for bar charts, `bar_label`), already
     ordered by `group_charts`: line by period ascending, bar by row label
     ascending, both tie-broken by data point id."""
@@ -76,7 +76,7 @@ class Chart:
 
 
 def group_charts(points: list[ChartPoint]) -> tuple[list[Chart], list[ChartPoint]]:
-    """Groups one panelist's verified data points into deterministic charts
+    """Groups one agent's verified data points into deterministic charts
     (spec §8 item 5, chart-compatibility rules), each point consumed at most
     once. Three precedence passes, each fully consuming its own matches
     before the next pass sees what's left:
@@ -113,8 +113,8 @@ def group_charts(points: list[ChartPoint]) -> tuple[list[Chart], list[ChartPoint
     near-miss degrades to a card, never a wrong chart). Returns
     `(charts, leftover)`: `leftover` is every point no pass consumed, in
     input order. `charts` is ordered by (metric, unit, label) ascending —
-    deterministic even when one panelist produces more than one chart;
-    ordering *across* panelists is the caller's job (roster order)."""
+    deterministic even when one agent produces more than one chart;
+    ordering *across* agents is the caller's job (roster order)."""
     charts: list[Chart] = []
     remaining = list(points)
     for consume in (_consume_line, _consume_bar_geo, _consume_bar_entity):
@@ -131,7 +131,7 @@ def svg_line(chart: Chart, lang: str) -> str:
     `group_charts` already sorted them. Y-axis: 0 at the bottom, `max(value)`
     at the top (spec step 3: "max(value) scaling"), 4 gridlines (spec step
     3) labelled via `fmt_num`. Each point is its own
-    `<circle id="dp-<panelist>-D<n>">` — the anchor narrative D-refs resolve
+    `<circle id="dp-<agent>-D<n>">` — the anchor narrative D-refs resolve
     to (spec: "Each data point card/chart node gets id=...")."""
     m = _LINE_MARGIN
     plot_x0, plot_x1 = m["left"], _LINE_WIDTH - m["right"]
@@ -165,7 +165,7 @@ def svg_line(chart: Chart, lang: str) -> str:
     dots = []
     for p in points:
         x, y = x_of(p["period"]), y_of(p["value"])
-        anchor = f"dp-{p['panelist']}-{p['id']}"
+        anchor = f"dp-{p['agent']}-{p['id']}"
         dots.append(
             f'<circle id="{esc(anchor)}" cx="{x:.1f}" cy="{y:.1f}" r="4" fill="currentColor">'
             f"<title>{esc(p['period'])}: {esc(fmt_num(p['value'], lang))} {esc(p['unit'])}</title>"
@@ -195,7 +195,7 @@ def svg_bar(chart: Chart, lang: str) -> str:
     Row height is a fixed 24px (spec step 3), viewBox height grows
     deterministically with the row count. Value axis: 0 at the label edge,
     `max(value)` at the far edge, 4 gridlines (spec step 3). Each bar is its
-    own `<rect id="dp-<panelist>-D<n>">` for D-ref anchoring."""
+    own `<rect id="dp-<agent>-D<n>">` for D-ref anchoring."""
     points = chart.points
     n = len(points)
     height = _BAR_MARGIN["top"] + n * _BAR_ROW_HEIGHT + max(0, n - 1) * _BAR_ROW_GAP \
@@ -223,7 +223,7 @@ def svg_bar(chart: Chart, lang: str) -> str:
     for i, p in enumerate(points):
         y = _BAR_MARGIN["top"] + i * (_BAR_ROW_HEIGHT + _BAR_ROW_GAP)
         w = width_of(p["value"])
-        anchor = f"dp-{p['panelist']}-{p['id']}"
+        anchor = f"dp-{p['agent']}-{p['id']}"
         row_center = y + _BAR_ROW_HEIGHT / 2
         bars.append(
             f'<rect id="{esc(anchor)}" x="{plot_x0}" y="{y}" width="{w:.1f}" '
@@ -252,13 +252,13 @@ def svg_bar(chart: Chart, lang: str) -> str:
 def kpi_card(point: ChartPoint, lang: str) -> str:
     """Renders one verified data point as a stand-alone card (spec §8: "KPI
     card: any verified data point not consumed by a chart") — used both for
-    the top-level KPI strip (item 4) and for a panelist's own leftover data
+    the top-level KPI strip (item 4) and for an agent's own leftover data
     points that didn't make the strip's cap (item 5). Carries the same
-    `id="dp-<panelist>-D<n>"` anchor scheme as chart points, so a D-ref
+    `id="dp-<agent>-D<n>"` anchor scheme as chart points, so a D-ref
     resolves the same way regardless of which of the two places rendered
     it."""
     labels = LABELS[lang]
-    anchor = f"dp-{point['panelist']}-{point['id']}"
+    anchor = f"dp-{point['agent']}-{point['id']}"
     dims = f'{esc(point["period"])} · {esc(point["geography"])}'
     qualified = point.get("source_qualified")
     footer = ""
@@ -278,12 +278,12 @@ def kpi_card(point: ChartPoint, lang: str) -> str:
 
 def render_kpi_strip(run: Run) -> str:
     """Top-level KPI strip (spec §8 item 4): a capped, deterministic,
-    cross-panelist highlight reel of "top verified data points as cards".
-    Selection: `_global_kpi_pool` already orders every panelist's
+    cross-agent highlight reel of "top verified data points as cards".
+    Selection: `_global_kpi_pool` already orders every agent's
     *un-charted* verified data points by (roster order, then D-id) — the
     first `KPI_STRIP_CAP` of that pool are "top" by that same order.
     Charted data points never appear here; they're already visualized in
-    their own panelist's section (spec §8 item 5)."""
+    their own agent's section (spec §8 item 5)."""
     lang = _lang(run.manifest)
     labels = LABELS[lang]
     strip_points = _global_kpi_pool(run)[:KPI_STRIP_CAP]
@@ -390,7 +390,7 @@ def _consume_bar_entity(remaining: list[ChartPoint]) -> tuple[list[Chart], list[
 
 def _chart_footer(points: tuple[ChartPoint, ...], lang: str) -> str:
     """Shared chart-footer builder (spec: "every chart/card footer cites
-    qualified source ids"): every distinct `<panelist>:S<n>` among the
+    qualified source ids"): every distinct `<agent>:S<n>` among the
     chart's own points, first-seen order, linked into the sources appendix
     when a `source_href` was resolved (`_verified_chart_points`), else
     shown as plain escaped text. Points with no external source (a
@@ -411,13 +411,13 @@ def _chart_footer(points: tuple[ChartPoint, ...], lang: str) -> str:
     return f'<p class="chart-footer">{esc(labels["sources"])}: {", ".join(entries)}</p>'
 
 
-def _entity_label(data_point_id: str, findings: list[PanelFinding]) -> str:
+def _entity_label(data_point_id: str, findings: list[AgentFinding]) -> str:
     """Bar-entity chart row label (spec §8 chart-compatibility, bar-entity
     variant): the first 40 characters of the claim of the finding whose
     `data_point_ids` includes this data point, choosing the lowest-numbered
     finding id when more than one links to the same point (deterministic
     tie-break); falls back to the data point's own id when no finding links
-    to it. `findings` must already be filtered to that panelist's
+    to it. `findings` must already be filtered to that agent's
     *verified* findings by the caller (`_verified_chart_points`) — this
     function does no verdict lookups of its own (keeps it testable on bare
     dict literals), so a finding excluded from `findings` behaves exactly
@@ -428,14 +428,14 @@ def _entity_label(data_point_id: str, findings: list[PanelFinding]) -> str:
     return linking[0]["claim"][:40] if linking else data_point_id
 
 
-def _verified_chart_points(run: Run, panelist_id: str) -> list[ChartPoint]:
-    """Every *verified* data point of one panelist's surviving attempt
+def _verified_chart_points(run: Run, agent_id: str) -> list[ChartPoint]:
+    """Every *verified* data point of one agent's surviving attempt
     (spec §8 item 5 eligibility: drawn from the verification lookup, never
     the raw panel list), sorted by D-id ascending — the deterministic base
     order `group_charts` groups from. Each point is the panel document's own
     data-point dict plus the fields the chart/card renderers need but that
-    aren't part of the wire schema: `panelist`, `entity_label` (§8
-    bar-entity rule — looked up only among this panelist's *verified*
+    aren't part of the wire schema: `agent`, `entity_label` (§8
+    bar-entity rule — looked up only among this agent's *verified*
     findings, per the same verification lookup as the data points
     themselves; a finding that is the sole link to a data point but wasn't
     itself verified must not win the row label, so it's filtered out
@@ -444,32 +444,32 @@ def _verified_chart_points(run: Run, panelist_id: str) -> list[ChartPoint]:
     run's own merged-sources anchor map so
     `group_charts`/`svg_line`/`svg_bar`/`kpi_card` never need the run or
     the anchor map as a parameter)."""
-    survivor = run.survivors[panelist_id]
+    survivor = run.survivors[agent_id]
     panel = survivor["panel"]
     verification = survivor["verification"]
     anchors = _qualified_source_anchors(merged_sources(run))
     verified_ids = {d["id"] for d in verification["data_points"] if d["verdict"] == "verified"}
     verified_finding_ids = {f["id"] for f in verification["findings"] if f["verdict"] == "verified"}
     verified_findings = [f for f in panel["findings"] if f["id"] in verified_finding_ids]
-    dp_by_id: dict[str, PanelDataPoint] = {d["id"]: d for d in panel["data_points"]}
+    dp_by_id: dict[str, AgentDataPoint] = {d["id"]: d for d in panel["data_points"]}
     points: list[ChartPoint] = []
     for did in sorted(verified_ids, key=_numeric_suffix):
         dp = dp_by_id[did]
         source_id = dp.get("source_id") or ""
-        source_qualified = f"{panelist_id}:{source_id}" if source_id else None
+        source_qualified = f"{agent_id}:{source_id}" if source_id else None
         # cast: mypy's TypedDict-unpack completeness check treats a
         # NotRequired key (`bar_label`) as unaccounted-for unless the `**`
         # source's own declared type also carries it. `dp` is
-        # `PanelDataPoint`, which never declares `bar_label` — it's added
+        # `AgentDataPoint`, which never declares `bar_label` — it's added
         # only later, by `_consume_bar_geo`/`_consume_bar_entity`. Every
-        # `ChartPoint`-required key IS present (all of `PanelDataPoint` via
+        # `ChartPoint`-required key IS present (all of `AgentDataPoint` via
         # `**dp`, the four rendering-only fields via the literal below);
         # `bar_label` is correctly, intentionally absent at this point in
         # the pipeline — this is a known mypy limitation, not a missing
         # field.
         points.append(cast(ChartPoint, {
             **dp,
-            "panelist": panelist_id,
+            "agent": agent_id,
             "entity_label": _entity_label(did, verified_findings),
             "source_qualified": source_qualified,
             "source_href": anchors.get(source_qualified) if source_qualified else None,
@@ -479,11 +479,11 @@ def _verified_chart_points(run: Run, panelist_id: str) -> list[ChartPoint]:
 
 def _global_kpi_pool(run: Run) -> list[ChartPoint]:
     """Deterministic (roster order, then D-id) flat list of every verified
-    data point *not* consumed by its own panelist's charts, across the
+    data point *not* consumed by its own agent's charts, across the
     whole run. The first `KPI_STRIP_CAP` of this list is the top-level KPI
     strip (spec §8 item 4); the rest render as leftover cards inside their
-    own panelist's section (spec §8 item 5). This split is what keeps every
-    verified data point's `id="dp-<panelist>-D<n>"` anchor unique across the
+    own agent's section (spec §8 item 5). This split is what keeps every
+    verified data point's `id="dp-<agent>-D<n>"` anchor unique across the
     document — a chart-consumed point renders once, inside its chart; an
     un-charted point renders once, either in the strip or in its own
     section, never both (`render_kpi_strip` and `render_section` both slice
@@ -502,7 +502,7 @@ def _global_kpi_pool(run: Run) -> list[ChartPoint]:
 
 
 def _qualified_source_anchors(merged: list[MergedSource]) -> dict[str, str]:
-    """Maps every panel-origin mention's qualified id (`'<panelist>:S<n>'`)
+    """Maps every panel-origin mention's qualified id (`'<agent>:S<n>'`)
     to its `MergedSource` anchor id. Shared by `_verified_chart_points`
     here and by `render_section` (still in `render_business_report.py`,
     due to move in Task 13) — kept in this module rather than the renderer
@@ -511,6 +511,6 @@ def _qualified_source_anchors(merged: list[MergedSource]) -> dict[str, str]:
     renderer importing back from charts.py for its own remaining call site
     mirrors the established `_numeric_suffix`/sources.py precedent (Task
     11) rather than introducing a charts->renderer edge."""
-    return {f"{mention.panelist}:{mention.local_id}": source.anchor_id
+    return {f"{mention.agent}:{mention.local_id}": source.anchor_id
             for source in merged for mention in source.mentions
             if mention.origin == "panel"}

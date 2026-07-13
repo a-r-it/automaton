@@ -10,9 +10,8 @@ from typing import TypedDict, cast
 
 from business_research import json_io
 from business_research.models import (
-    EnvelopeRegistry,
+    AgentDoc,
     ManifestDoc,
-    PanelDoc,
     SynthesisDoc,
     VerificationDoc,
 )
@@ -27,9 +26,8 @@ from business_research.rendering.sections import (
     render_section,
 )
 from business_research.rendering.sources import render_sources
-from business_research.validation.envelope import validate_envelope
+from business_research.validation.agent import validate_agent
 from business_research.validation.manifest import validate_manifest
-from business_research.validation.panel import validate_panel
 from business_research.validation.synthesis import validate_synthesis
 from business_research.validation.verification import (
     attempt_filename_errors,
@@ -262,16 +260,16 @@ class RenderInputError(Exception):
 
 
 class Survivor(TypedDict):
-    """One roster panelist's surviving attempt, as `load_run` re-shapes it
+    """One roster agent's surviving attempt, as `load_run` re-shapes it
     for `Run.survivors` — narrower than `verification.surviving_attempts`'
     own `_Survivor` (that one also carries `superseded`, typed `object` for
     `panel`/`verification` since it's built before this module's own strict
     turn). By the time a value reaches here it has already passed
-    `validate_panel`/`validate_verification`, so `PanelDoc`/`VerificationDoc`
+    `validate_agent`/`validate_verification`, so `AgentDoc`/`VerificationDoc`
     are the honest types, not `object`."""
 
     attempt: int
-    panel: PanelDoc
+    panel: AgentDoc
     verification: VerificationDoc
 
 
@@ -279,17 +277,14 @@ class Survivor(TypedDict):
 class Run:
     """A fully loaded and re-validated build dir, ready to render.
 
-    `survivors` is keyed by roster panelist id, each value a `Survivor`
-    (`{"attempt": int, "panel": PanelDoc, "verification": VerificationDoc}`)
+    `survivors` is keyed by roster agent id, each value a `Survivor`
+    (`{"attempt": int, "panel": AgentDoc, "verification": VerificationDoc}`)
     — every roster entry is guaranteed present (load_run raises otherwise).
     `superseded` is the flat, deterministic (roster order, then filename)
     list of every non-surviving attempt filename, for the provenance block.
     """
 
     manifest: ManifestDoc
-    facts_text: str
-    facts_digest: str
-    registry: EnvelopeRegistry
     survivors: dict[str, Survivor]
     synthesis: SynthesisDoc
     superseded: list[str]
@@ -316,9 +311,9 @@ def provenance_block(payload: Mapping[str, object]) -> str:
 
 def load_run(build_dir: str) -> Run:
     """Loads and re-validates every staged artifact under `build_dir` (spec
-    §4 layout): manifest -> facts.md -> facts.sources.json (registry) ->
-    surviving attempts per roster entry -> synthesis. Raises
-    `RenderInputError` on any invalid input; never returns a partial `Run`."""
+    §4 layout): manifest -> surviving attempts per roster entry -> synthesis.
+    Raises `RenderInputError` on any invalid input; never returns a partial
+    `Run`."""
     build_path = Path(build_dir)
 
     manifest_doc, manifest_load_errs = json_io.load_document(build_path / "manifest.json")
@@ -327,20 +322,6 @@ def load_run(build_dir: str) -> Run:
     manifest_errs = manifest_load_errs + validate_manifest(manifest_doc)
     if manifest_errs:
         raise RenderInputError(_input_errors("manifest.json", manifest_errs))
-
-    facts_path = build_path / "facts.md"
-    try:
-        facts_text = facts_path.read_text(encoding="utf-8")
-    except OSError as e:
-        raise RenderInputError([f"E-render-input: facts.md: {e}"]) from e
-    facts_digest = json_io.sha256_file(facts_path)
-
-    registry_doc, registry_load_errs = json_io.load_document(build_path / "facts.sources.json")
-    if registry_doc is None:
-        raise RenderInputError(_input_errors("facts.sources.json", registry_load_errs))
-    envelope_errs = registry_load_errs + _validate_registry(registry_doc, manifest_doc, build_path)
-    if envelope_errs:
-        raise RenderInputError(_input_errors("facts.sources.json", envelope_errs))
 
     roster = [e for e in manifest_doc.get("roster", []) if isinstance(e, dict)]
     survivors_raw = surviving_attempts(str(build_path), manifest_doc)
@@ -353,14 +334,15 @@ def load_run(build_dir: str) -> Run:
         if survivor is None:
             survivor_errs.extend(_diagnose_missing_survivor(build_path, pid, manifest_doc, entry))
             continue
-        # cast: verification._Survivor types panel/verification as `object`
-        # (that module is out of Task 16's scope, and was deliberately kept
-        # loose in Task 15 to avoid rippling into this file ahead of its own
-        # turn) — but by this point survivor["panel"]/["verification"] have
-        # already passed validate_panel/validate_verification, so PanelDoc/
-        # VerificationDoc are the honest types.
+        # cast: verification._Survivor types its "panel" and "verification"
+        # entries as `object` (that module is out of Task 16's scope, and
+        # was deliberately kept loose in Task 15 to avoid rippling into this
+        # file ahead of its own turn) — but by this point
+        # survivor["panel"]/["verification"] have already passed
+        # validate_agent/validate_verification, so AgentDoc/VerificationDoc
+        # are the honest types.
         survivors[pid] = {"attempt": survivor["attempt"],
-                           "panel": cast(PanelDoc, survivor["panel"]),
+                           "panel": cast(AgentDoc, survivor["panel"]),
                            "verification": cast(VerificationDoc, survivor["verification"])}
         superseded.extend(survivor["superseded"])
     if survivor_errs:
@@ -374,8 +356,7 @@ def load_run(build_dir: str) -> Run:
     if synthesis_errs:
         raise RenderInputError(_input_errors("synthesis.json", synthesis_errs))
 
-    return Run(manifest=manifest_doc, facts_text=facts_text, facts_digest=facts_digest,
-               registry=registry_doc, survivors=survivors, synthesis=synthesis_doc,
+    return Run(manifest=manifest_doc, survivors=survivors, synthesis=synthesis_doc,
                superseded=superseded)
 
 
@@ -422,48 +403,27 @@ def _input_errors(file_label: str, errors: list[str]) -> list[str]:
     return [f"E-render-input: {file_label}: {e}" for e in errors]
 
 
-def _validate_registry(registry_doc: object, manifest_doc: object, build_path: Path) -> list[str]:
-    """`facts.sources.json` stages the *registry* object (`fact-pack-sources-v1`)
-    directly — not the `fact-pack-envelope-v1` wrapper `validate_envelope`
-    expects (spec §4 vs §5.2). Wrap it in a synthetic envelope so the tested
-    field- and digest-checking logic in `validate_envelope` still applies,
-    then add the one cross-check it doesn't do: registry slug == manifest
-    slug."""
-    synthetic_envelope = {
-        "schema_version": "fact-pack-envelope-v1",
-        "facts_path": str(build_path / "facts.md"),
-        "registry": registry_doc,
-    }
-    errs = validate_envelope(synthetic_envelope, str(build_path))
-    registry_slug = registry_doc.get("slug") if isinstance(registry_doc, dict) else None
-    manifest_slug = manifest_doc.get("slug") if isinstance(manifest_doc, dict) else None
-    if registry_slug != manifest_slug:
-        errs.append(f"E-envelope-registry-slug-mismatch: registry slug {registry_slug!r} "
-                    f"does not match manifest slug {manifest_slug!r}")
-    return errs
-
-
 def _diagnose_missing_survivor(build_path: Path, pid: str, manifest: Mapping[str, object],
                                 entry: object) -> list[str]:
-    """Best-effort diagnostic for a roster panelist with no surviving
-    attempt: re-runs panel/verification/survival validation against its
+    """Best-effort diagnostic for a roster agent with no surviving
+    attempt: re-runs research/verification/survival validation against its
     highest attempt so the E-render-input line names the underlying rule,
     not just the fact that no attempt survived."""
     pattern = re.compile(rf"^{re.escape(pid)}\.a([1-9][0-9]*)\.json$")
     attempt_nums = []
-    for pf in sorted((build_path / "panel").glob(f"{pid}.a*.json")):
+    for pf in sorted((build_path / "research").glob(f"{pid}.a*.json")):
         m = pattern.match(pf.name)
         if m:
             attempt_nums.append(int(m.group(1)))
     if not attempt_nums:
-        return [f"E-render-input: panel/{pid}.a*.json: no attempt files found"]
+        return [f"E-render-input: research/{pid}.a*.json: no attempt files found"]
 
     n = max(attempt_nums)
-    panel_rel = f"panel/{pid}.a{n}.json"
+    panel_rel = f"research/{pid}.a{n}.json"
     panel_doc, load_errs = json_io.load_document(build_path / panel_rel)
     if panel_doc is None:
         return _input_errors(panel_rel, load_errs)
-    panel_errs = load_errs + validate_panel(panel_doc, manifest)
+    panel_errs = load_errs + validate_agent(panel_doc, manifest)
     if panel_errs:
         return _input_errors(panel_rel, panel_errs)
 
@@ -474,7 +434,7 @@ def _diagnose_missing_survivor(build_path: Path, pid: str, manifest: Mapping[str
     verif_doc, verif_load_errs = json_io.load_document(verif_path)
     if verif_doc is None:
         return _input_errors(verif_rel, verif_load_errs)
-    verif_errs = verif_load_errs + validate_verification(verif_doc, panel_doc)
+    verif_errs = verif_load_errs + validate_verification(verif_doc, panel_doc, manifest)
     if verif_errs:
         return _input_errors(verif_rel, verif_errs)
 
@@ -494,10 +454,7 @@ class ProvenancePayload(TypedDict):
     round-trips through `provenance_block`."""
 
     manifest: ManifestDoc
-    facts_md: str
-    facts_digest: str
-    registry: EnvelopeRegistry
-    panel: dict[str, PanelDoc]
+    agent: dict[str, AgentDoc]
     verification: dict[str, VerificationDoc]
     synthesis: SynthesisDoc
     superseded: list[str]
@@ -506,10 +463,7 @@ class ProvenancePayload(TypedDict):
 def _provenance_payload(run: Run) -> ProvenancePayload:
     return {
         "manifest": run.manifest,
-        "facts_md": run.facts_text,
-        "facts_digest": run.facts_digest,
-        "registry": run.registry,
-        "panel": {pid: s["panel"] for pid, s in run.survivors.items()},
+        "agent": {pid: s["panel"] for pid, s in run.survivors.items()},
         "verification": {pid: s["verification"] for pid, s in run.survivors.items()},
         "synthesis": run.synthesis,
         "superseded": run.superseded,
@@ -546,8 +500,8 @@ def _render_provenance(run: Run) -> str:
 
 
 def _all_dp_anchor_ids(run: Run) -> frozenset[str]:
-    """Every `id="dp-<panelist>-D<n>"` anchor the render will produce
-    somewhere in the document: `_global_kpi_pool` guarantees each panelist's
+    """Every `id="dp-<agent>-D<n>"` anchor the render will produce
+    somewhere in the document: `_global_kpi_pool` guarantees each agent's
     verified data points render in exactly one of three places (their own
     chart, the top-level strip, or their own section's leftover cards), so
     this reduces to every surviving attempt's verified data-point ids,

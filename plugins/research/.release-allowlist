@@ -1,0 +1,9 @@
+.claude-plugin/plugin.json
+README.md
+agents/**
+skills/**
+scripts/**
+# drop dev-time eval data that lives inside skills (not runtime content)
+!skills/*/evals/*
+# drop compiled bytecode if any slips into a tracked path
+!scripts/**/__pycache__/*

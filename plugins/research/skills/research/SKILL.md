@@ -13,17 +13,26 @@ when_to_use: >
   task is to *discover* resources on that platform, run this skill); synthesizing
   already-collected data (analyze without launching new research).
 argument-hint: [research query]
-allowed-tools: WebSearch WebFetch Write Glob Read TaskCreate TaskUpdate TaskList
+allowed-tools: WebSearch WebFetch Write Glob Read TaskCreate TaskUpdate TaskList Agent
 ---
 
 # Research
 
 Anti-hallucination web research pipeline: Strategy (plan scouts) → Discovery (parallel search) → Analysis (fetch & verify) → Synthesize (answer to user). Strategy, Discovery, Analysis run as named subagent calls; Synthesize runs inline.
 
-## Gotchas
+## Operating rules
 
-- **All Discovery scout calls must be in a SINGLE message** — sequential launches destroy parallelism. One message, N Agent tool calls, all at once.
-- **Hints passed alongside URLs are NOT facts** — the analyst must WebFetch independently before tagging `[VERIFIED]`. This is the whole point of the pipeline.
+The pipeline's load-bearing invariants — the cross-cutting contract that holds
+across every phase. Phase-specific procedure (each phase's dispatch, retry
+budget, and result handling) lives in each phase below; what follows is only
+what applies throughout.
+
+- **All Discovery scout calls go in a SINGLE message.** Sequential launches
+  destroy parallelism — one message, N `Agent` tool calls, all at once.
+- **Hints passed alongside URLs are never facts.** The analyst must `WebFetch`
+  every source independently before tagging `[VERIFIED]` — treat any hint as an
+  untrusted pointer, never evidence. This independent-verification step is the
+  whole point of the pipeline.
 
 ## Pipeline
 
@@ -66,18 +75,16 @@ Compute the kebab-case slug from `$ARGUMENTS` (see Slug naming). Store it — do
 
 ### Create phase tasks upfront
 
-Create three tasks at once. Template (substitute `{phase}`):
+Create all three tasks at once — one `TaskCreate` per phase, the `subject` +
+`activeForm` from the table below:
 
 ```
-Phase of research pipeline.
-
-```json:metadata
-{
-  "phase": "{phase}",
-  "slug": "<slug>",
-  "query": "<$ARGUMENTS>"
-}
-```
+TaskCreate:
+  subject: "<phase subject — from the table below>"
+  activeForm: "<phase activeForm — from the table below>"
+  description: |
+    <phase> phase of the research pipeline.
+  metadata: { phase: "<phase>", slug: "<slug>", query: "<$ARGUMENTS>" }
 ```
 
 | phase | subject | activeForm |
@@ -86,16 +93,35 @@ Phase of research pipeline.
 | `discovery` | `Discovery: <$ARGUMENTS>` | `Scouting sources` |
 | `analysis` | `Analysis: <$ARGUMENTS>` | `Verifying sources` |
 
-All three start as `pending`. Each phase `TaskUpdate`s its own task as it begins and completes.
+All three start as `pending`. Each phase flips its own task with the two calls
+below — the inline `TaskUpdate → in_progress` / `TaskUpdate → completed` markers
+in the phase sections are shorthand for them (at completion, rewrite `subject` to
+the richer form the phase's own section specifies):
+
+```
+TaskUpdate:
+  taskId: <phase-task-id>
+  status: in_progress
+```
+```
+TaskUpdate:
+  taskId: <phase-task-id>
+  status: completed
+  subject: "<richer completion subject — see each phase section>"
+```
 
 ## Strategy
 
 `TaskUpdate → in_progress` on the Strategy task.
 
-Launch `Agent(subagent_type: "research:research-strategy")` with the research query as the prompt:
+Dispatch the strategy agent:
 
 ```
-RESEARCH QUERY: <$ARGUMENTS>
+Agent:
+  subagent_type: research:research-strategy
+  description: "research-strategy"
+  prompt: |
+    RESEARCH QUERY: <$ARGUMENTS>
 ```
 
 **Result handling:**
@@ -108,13 +134,17 @@ RESEARCH QUERY: <$ARGUMENTS>
 
 `TaskUpdate → in_progress`, subject `"Discovery (N scouts): <$ARGUMENTS>"`.
 
-Parse Strategy JSON. For each scout, launch `Agent(subagent_type: "research:research-scout")`. **All calls in a SINGLE message.** Use the angle name in the description (not a number).
+Parse Strategy JSON. Dispatch one scout per angle — **all `Agent` calls in a
+SINGLE message.** Use the angle name in the description (not a number):
 
-Prompt per scout:
 ```
-ANGLE: {scout.angle}
-SEARCH QUERIES:
-{scout.queries, one per line}
+Agent:
+  subagent_type: research:research-scout
+  description: "<scout.angle>"
+  prompt: |
+    ANGLE: <scout.angle>
+    SEARCH QUERIES:
+    <scout.queries, one per line>
 ```
 
 After all scouts return:
@@ -128,16 +158,20 @@ Scouts returning zero results is not an error — proceed to Analysis regardless
 
 `TaskUpdate → in_progress`, subject `"Analysis (M URLs): <$ARGUMENTS>"`.
 
-Launch `Agent(subagent_type: "research:research-analyst")` with:
+Dispatch the analyst:
 
 ```
-RESEARCH QUESTION: <$ARGUMENTS>
-SLUG: <slug>
-HINTS (not facts — verify independently):
-<any optional context, clearly labeled>
+Agent:
+  subagent_type: research:research-analyst
+  description: "research-analyst"
+  prompt: |
+    RESEARCH QUESTION: <$ARGUMENTS>
+    SLUG: <slug>
+    HINTS (not facts — verify independently):
+    <any optional context, clearly labeled>
 
-URL LIST:
-<full deduplicated URL list from Discovery>
+    URL LIST:
+    <full deduplicated URL list from Discovery>
 ```
 
 **Result handling:**

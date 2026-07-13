@@ -6,19 +6,19 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from business_research.json_io import load_document
+from business_research.validation.agent import _CONFIDENCE_VALUES, _dupes, has_numeric_token
 from business_research.validation.manifest import validate_manifest
-from business_research.validation.panel import _CONFIDENCE_VALUES, _dupes, has_numeric_token
 from business_research.validation.verification import surviving_attempts
 
 # --- synthesis kind (spec §5.4) ------------------------------------------------
 
 _SYNTH_TOP_KEYS = {"schema_version", "slug", "title", "verdict", "executive_summary",
                     "sections", "risks", "recommendations", "limitations"}
-_SECTION_KEYS = {"panelist", "narrative", "disagreements"}
+_SECTION_KEYS = {"agent", "narrative", "disagreements"}
 _VERDICT_KEYS = {"decision", "statement", "confidence", "refs"}
 _VERDICT_DECISIONS = ("go", "no-go", "conditional-go", "insufficient-evidence")
-# _CONFIDENCE_VALUES lives in business_research.validation.panel (imported
-# above) — shared with the panel kind's finding.confidence check (spec §5.1).
+# _CONFIDENCE_VALUES lives in business_research.validation.agent (imported
+# above) — shared with the agent kind's finding.confidence check (spec §5.1).
 _SEVERITY_VALUES = ("high", "medium", "low")
 _REF_RE = re.compile(r"^([^:]+):(F|D)([1-9][0-9]*)$")
 
@@ -32,12 +32,12 @@ type _SurvivorLookup = dict[str, dict[str, dict[str, object]]]
 def _build_survivor_lookup(survivors: Mapping[str, Mapping[str, object] | None]
                             ) -> _SurvivorLookup:
     """{pid: {"F": {id: verdict}, "D": {id: verdict}}}, one entry per
-    surviving panelist. Verdicts come from the surviving attempt's
+    surviving agent. Verdicts come from the surviving attempt's
     verification document; `surviving_attempts` already proved that
-    document's finding/data-point ids equal the panel document's 1:1 (the
+    document's finding/data-point ids equal the agent document's 1:1 (the
     coverage rule inside `validate_verification`), so id *existence* is
     fully answered by the verification document alone — no need to
-    cross-check the panel document's ids again here."""
+    cross-check the agent document's ids again here."""
     lookup: _SurvivorLookup = {}
     for pid, survivor in survivors.items():
         if survivor is None:
@@ -60,12 +60,20 @@ def _build_survivor_lookup(survivors: Mapping[str, Mapping[str, object] | None]
 
 
 def _check_ref(errs: list[str], context: str, ref: object,
-               survivor_lookup: _SurvivorLookup) -> bool:
+               survivor_lookup: _SurvivorLookup, *, allow_disputed: bool = False) -> bool:
     """Validates one qualified ref (`<roster-id>:F<n>` / `<roster-id>:D<n>`)
     against the surviving-attempt lookup, appending a named error for any
     failure. Returns True iff the ref is a *valid* ':D' ref — the only
     signal the numeric-token rule cares about (a valid ':F' ref, or any
-    invalid ref, both count as "no D-ref backing")."""
+    invalid ref, both count as "no D-ref backing").
+
+    `allow_disputed` (design §6, "disputed findings surface, not vanish"):
+    when True, a `disputed`-verdict id also resolves — used ONLY for the
+    `disagreements[]` ref-walk. A `disputed` finding fails survival (not
+    citable as verified evidence elsewhere), but it carries genuine
+    conflict signal that belongs in disagreements. `contradicted` and
+    `unsupported` verdicts are never allowed, in `disagreements` or
+    anywhere else."""
     if not isinstance(ref, str):
         errs.append(f"E-synth-ref-unknown: {context} ref {ref!r} is not a string")
         return False
@@ -78,15 +86,15 @@ def _check_ref(errs: list[str], context: str, ref: object,
     ids = survivor_lookup.get(pid)
     if ids is None:
         errs.append(f"E-synth-ref-unknown: {context} ref {ref!r} — {pid!r} is not a "
-                    f"surviving roster panelist")
+                    f"surviving roster agent")
         return False
     item_id = f"{kind}{num}"
     verdict = ids[kind].get(item_id)
     if verdict is None:
         errs.append(f"E-synth-ref-unknown: {context} ref {ref!r} — {item_id!r} not found for "
-                    f"panelist {pid!r}")
+                    f"agent {pid!r}")
         return False
-    if verdict != "verified":
+    if verdict != "verified" and not (allow_disputed and verdict == "disputed"):
         errs.append(f"E-synth-ref-unverified: {context} ref {ref!r} — {item_id!r} verdict "
                     f"{verdict!r} is not 'verified'")
         return False
@@ -95,11 +103,14 @@ def _check_ref(errs: list[str], context: str, ref: object,
 
 def _check_ref_items(errs: list[str], label: str, items: object, allowed_keys: set[str],
                       text_key: str, *, refs_required: bool, survivor_lookup: _SurvivorLookup,
-                      literal_field: tuple[str, tuple[str, ...]] | None = None) -> None:
+                      literal_field: tuple[str, tuple[str, ...]] | None = None,
+                      allow_disputed: bool = False) -> None:
     """Shared per-item walk for every synthesis evidentiary list (spec §5.4):
     shape (exact keys), ref grammar/resolution, the mandatory-ref rule, and
     the numeric-token-requires-a-D-ref rule. `literal_field` is an optional
-    (field_name, allowed_values) pair for risks' 'severity'."""
+    (field_name, allowed_values) pair for risks' 'severity'. `allow_disputed`
+    is passed through to `_check_ref` unchanged — True ONLY for the
+    `sections[].disagreements` call site (design §6)."""
     if not isinstance(items, list):
         errs.append(f"E-synth-{label}-list: {label!r} missing or not a list, got {items!r}")
         return
@@ -134,7 +145,8 @@ def _check_ref_items(errs: list[str], label: str, items: object, allowed_keys: s
 
         # List comprehension, not any(generator): _check_ref's error-appending
         # side effect must run for every ref, not stop at the first D-ref hit.
-        dref_flags = [_check_ref(errs, f"{label}[{i}]", ref, survivor_lookup) for ref in refs]
+        dref_flags = [_check_ref(errs, f"{label}[{i}]", ref, survivor_lookup,
+                                  allow_disputed=allow_disputed) for ref in refs]
 
         if has_numeric_token(text) and not any(dref_flags):
             errs.append(f"E-synth-numeric-no-dref: {label}[{i}] {text_key} carries a numeric "
@@ -180,7 +192,7 @@ def validate_synthesis(doc: object, build_dir: str) -> list[str]:
     survivor_lookup = _build_survivor_lookup(survivors)
     survivor_ids = {pid for pid, s in survivors.items() if s is not None}
 
-    # A roster panelist with no surviving attempt is a build-dir defect —
+    # A roster agent with no surviving attempt is a build-dir defect —
     # aligned with the renderer's load_run, which refuses such a build dir
     # (spec §5.4). Reachable only via hand-run CLI: the SKILL's survival
     # gate aborts the run before synthesis ever sees this state.
@@ -246,7 +258,7 @@ def validate_synthesis(doc: object, build_dir: str) -> list[str]:
         errs.append(f"E-synth-sections-list: 'sections' missing or not a list, got {sections!r}")
         sections = []
 
-    section_panelists = []
+    section_agents = []
     for i, section in enumerate(sections):
         if not isinstance(section, dict):
             errs.append(f"E-synth-section-entry: sections[{i}] is not an object")
@@ -257,28 +269,28 @@ def validate_synthesis(doc: object, build_dir: str) -> list[str]:
             errs.append(f"E-synth-section-keys: sections[{i}] keys {sorted(actual)} != "
                         f"{sorted(_SECTION_KEYS)}")
 
-        panelist = section.get("panelist")
-        if not isinstance(panelist, str) or not panelist:
-            errs.append(f"E-synth-section-panelist: sections[{i}] missing non-empty 'panelist'")
+        agent = section.get("agent")
+        if not isinstance(agent, str) or not agent:
+            errs.append(f"E-synth-section-agent: sections[{i}] missing non-empty 'agent'")
         else:
-            section_panelists.append(panelist)
+            section_agents.append(agent)
 
         _check_ref_items(errs, f"sections[{i}].narrative", section.get("narrative"),
                           {"text", "refs"}, "text", refs_required=True,
                           survivor_lookup=survivor_lookup)
         _check_ref_items(errs, f"sections[{i}].disagreements", section.get("disagreements"),
                           {"text", "refs"}, "text", refs_required=True,
-                          survivor_lookup=survivor_lookup)
+                          survivor_lookup=survivor_lookup, allow_disputed=True)
 
-    dup = _dupes(section_panelists)
+    dup = _dupes(section_agents)
     if dup:
         errs.append(f"E-synth-sections-duplicate: {dup}")
 
-    missing = sorted(survivor_ids - set(section_panelists))
+    missing = sorted(survivor_ids - set(section_agents))
     if missing:
         errs.append(f"E-synth-sections-missing: {missing}")
 
-    extra = sorted(set(section_panelists) - survivor_ids)
+    extra = sorted(set(section_agents) - survivor_ids)
     if extra:
         errs.append(f"E-synth-sections-extra: {extra}")
 

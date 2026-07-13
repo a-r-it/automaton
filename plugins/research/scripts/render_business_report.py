@@ -6,16 +6,16 @@ Consumes `business_research.validation.*` directly (via `load_run`) — every
 staged artifact is re-validated here (defense in depth: the orchestrator
 already validated each on write, this is the renderer's own gate). The LLM
 never writes HTML: this
-script is the only place business-panel / business-verification /
+script is the only place business-agent / business-verification /
 business-synthesis JSON becomes markup, and every LLM- or web-derived string
 goes through `esc`/`safe_url` on the way in.
 
 Every section produces real markup, including the chart/KPI-card layer
-(spec §8 items 4-5): `group_charts` groups one panelist's verified data
+(spec §8 items 4-5): `group_charts` groups one agent's verified data
 points into deterministic line/bar SVG charts (chart-compatibility rules,
 spec §8 item 5), `render_kpi_strip` shows a capped, deterministically
-selected cross-panelist highlight strip of the rest as cards, and each
-panelist's own `render_section` shows that panelist's charts plus whatever
+selected cross-agent highlight strip of the rest as cards, and each
+agent's own `render_section` shows that agent's charts plus whatever
 of its own cards didn't make the strip — see `_global_kpi_pool` for exactly
 how a verified data point ends up in one, and only one, of those three
 places.

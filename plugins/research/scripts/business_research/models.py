@@ -10,8 +10,8 @@ validate_* function checks with `in <tuple>` / `!=` against an exact string —
 those Literals are guarantees for a document that passed validation, not
 guesses. Everything else is `str`/`int`/`float`/`list`/`dict` as the shape
 requires. Every TypedDict here is `total=True` (all keys always present in a
-validated document) except `PanelDataPoint.source_id`, which
-`validate_panel` explicitly allows to be absent for `kind="calculated"`.
+validated document) except `AgentDataPoint.source_id`, which
+`validate_agent` explicitly allows to be absent for `kind="calculated"`.
 """
 from __future__ import annotations
 
@@ -27,13 +27,13 @@ __all__ = [
     "SynthesisRef",
     "RosterEntry",
     "ManifestDoc",
-    "EnvelopeSource",
-    "EnvelopeRegistry",
-    "EnvelopeDoc",
-    "PanelSource",
-    "PanelFinding",
-    "PanelDataPoint",
-    "PanelDoc",
+    "ScopeDoc",
+    "AgentSource",
+    "AgentFinding",
+    "AgentDataPoint",
+    "AgentDoc",
+    "DisconfirmingEntry",
+    "DisconfirmingNoneFound",
     "EvidenceEntry",
     "VerificationSource",
     "VerificationItem",
@@ -73,7 +73,7 @@ REQUIRED_TOPICS: dict[str, list[str]] = {
 
 # --- Synthesis ref grammar (spec §5.4) ---------------------------------------
 
-# A qualified reference string '<panelist-id>:F<n>' or '<panelist-id>:D<n>',
+# A qualified reference string '<agent-id>:F<n>' or '<agent-id>:D<n>',
 # as it appears in every 'refs' array throughout a synthesis document. Plain
 # string, not dict-shaped — matched by validate_synthesis's _REF_RE.
 type SynthesisRef = str
@@ -95,48 +95,36 @@ class RosterEntry(TypedDict):
 
 
 class ManifestDoc(TypedDict):
-    schema_version: Literal["business-research-run-v2"]
+    schema_version: Literal["business-research-run-v3"]
     slug: str
     brief: str
     report_date: str
     language: Literal["ru", "en"]
     build_dir: str
     final_report_path: str
+    scope_path: str
+    scope_digest: str
     roster: list[RosterEntry]
 
 
-# --- envelope kind (spec §5.2) ------------------------------------------------
+# --- scope kind (spec §5.0) ---------------------------------------------------
 
-class EnvelopeSource(TypedDict):
-    id: str
-    url: str
-    title: str
-    publisher: str
-    accessed_at: str
-    status: Literal["verified", "unverified"]
-
-
-class EnvelopeRegistry(TypedDict):
-    """The envelope's 'registry' key — a nested 'fact-pack-sources-v1'
-    sub-document, not a bare list. (The original skeleton for this task
-    guessed `registry: list[EnvelopeSource]`; validate_envelope requires
-    `doc["registry"]` to be an object carrying its own schema_version/slug/
-    facts_digest plus the `sources` list — corrected against source.)"""
-    schema_version: Literal["fact-pack-sources-v1"]
+class ScopeDoc(TypedDict):
+    schema_version: Literal["business-scope-v1"]
     slug: str
-    facts_digest: str
-    sources: list[EnvelopeSource]
+    market_definition: str
+    geography: str
+    horizon: str
+    decision_question: str
+    decision_type: Literal["explore", "compare", "go-no-go", "launch"]
+    lens_angles: dict[str, str]
+    scope_defaults_used: bool
+    defaulted_fields: list[str]
 
 
-class EnvelopeDoc(TypedDict):
-    schema_version: Literal["fact-pack-envelope-v1"]
-    facts_path: str
-    registry: EnvelopeRegistry
+# --- agent kind (spec §5.1) ---------------------------------------------------
 
-
-# --- panel kind (spec §5.1) ---------------------------------------------------
-
-class PanelSource(TypedDict):
+class AgentSource(TypedDict):
     id: str
     url: str
     title: str
@@ -147,7 +135,7 @@ class PanelSource(TypedDict):
     supports_data_point_ids: list[str]
 
 
-class PanelFinding(TypedDict):
+class AgentFinding(TypedDict):
     id: str
     topic: str
     claim: str
@@ -156,7 +144,7 @@ class PanelFinding(TypedDict):
     data_point_ids: list[str]
 
 
-class PanelDataPoint(TypedDict):
+class AgentDataPoint(TypedDict):
     id: str
     metric: str
     value: float
@@ -171,15 +159,28 @@ class PanelDataPoint(TypedDict):
                                     # expr for calculated
 
 
-class PanelDoc(TypedDict):
-    schema_version: Literal["business-panel-v2"]
-    panelist: str
+class DisconfirmingEntry(TypedDict):
+    source_id: str
+    finding_id: str
+    why_contrary: str
+
+
+class DisconfirmingNoneFound(TypedDict):
+    status: Literal["none found"]
+    searched: str
+
+
+class AgentDoc(TypedDict):
+    schema_version: Literal["business-agent-v2"]
+    agent: str
     status: Literal["complete"]
     summary: str
-    findings: list[PanelFinding]
-    data_points: list[PanelDataPoint]
-    sources: list[PanelSource]
+    findings: list[AgentFinding]
+    data_points: list[AgentDataPoint]
+    sources: list[AgentSource]
     limitations: list[str]
+    disconfirming_evidence: list[DisconfirmingEntry] | DisconfirmingNoneFound
+    scope_digest: str
 
 
 # --- verification kind (spec §5.3) --------------------------------------------
@@ -200,7 +201,7 @@ class VerificationItem(TypedDict):
     verification document."""
     id: str
     evidence: list[EvidenceEntry]
-    verdict: Literal["verified", "contradicted", "unsupported"]
+    verdict: Literal["verified", "contradicted", "disputed", "unsupported"]
 
 
 class VerificationAdditionalSource(TypedDict):
@@ -214,14 +215,15 @@ class VerificationAdditionalSource(TypedDict):
 
 
 class VerificationDoc(TypedDict):
-    schema_version: Literal["business-verification-v1"]
-    panelist: str
+    schema_version: Literal["business-verification-v2"]
+    agent: str
     attempt: int
     verifier_status: Literal["complete"]
     sources: list[VerificationSource]
     findings: list[VerificationItem]
     data_points: list[VerificationItem]
     additional_sources: list[VerificationAdditionalSource]
+    scope_digest: str
 
 
 # --- synthesis kind (spec §5.4) ------------------------------------------------
@@ -252,7 +254,7 @@ class SynthesisRecommendation(TypedDict):
 
 
 class SynthesisSection(TypedDict):
-    panelist: str
+    agent: str
     narrative: list[SynthesisRefItem]
     disagreements: list[SynthesisRefItem]
 

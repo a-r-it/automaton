@@ -2,7 +2,7 @@
 
 Structured web-research workflows for Claude Code: the `research:research`
 skill (general web research with scout/analyst agents) and the
-`research:business-research` skill (multi-analyst business panel producing
+`research:business-research` skill (multi-agent business research producing
 a verified HTML report).
 
 ## Requirements

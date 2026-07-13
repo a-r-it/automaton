@@ -16,13 +16,14 @@ from business_research.models import (
 )
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+_SCOPE_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def validate_manifest(doc: Mapping[str, object]) -> list[str]:
     errs: list[str] = []
 
-    if doc.get("schema_version") != "business-research-run-v2":
-        errs.append(f"E-manifest-schema-version: expected 'business-research-run-v2', "
+    if doc.get("schema_version") != "business-research-run-v3":
+        errs.append(f"E-manifest-schema-version: expected 'business-research-run-v3', "
                     f"got {doc.get('schema_version')!r}")
 
     slug = doc.get("slug")
@@ -40,6 +41,14 @@ def validate_manifest(doc: Mapping[str, object]) -> list[str]:
     brief = doc.get("brief")
     if not isinstance(brief, str) or not brief:
         errs.append(f"E-manifest-brief: {brief!r} is not a non-empty string")
+
+    scope_path = doc.get("scope_path")
+    if not isinstance(scope_path, str) or not scope_path:
+        errs.append(f"E-manifest-scope-path: {scope_path!r} is not a non-empty string")
+
+    scope_digest = doc.get("scope_digest")
+    if not isinstance(scope_digest, str) or not _SCOPE_DIGEST_RE.match(scope_digest):
+        errs.append(f"E-manifest-scope-digest: {scope_digest!r} is not 64 lowercase hex chars")
 
     roster = doc.get("roster")
     if not isinstance(roster, list):

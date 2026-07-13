@@ -123,24 +123,24 @@ def render_methodology(run: Run) -> str:
     return _wrap_section("methodology", labels["methodology"], body)
 
 
-def render_section(run: Run, panelist_id: str, dp_anchors: frozenset[str]) -> str:
+def render_section(run: Run, agent_id: str, dp_anchors: frozenset[str]) -> str:
     """One per-angle section (spec §8 item 5): synthesizer narrative, then
-    this panelist's own charts (from `group_charts`) plus whichever of its
+    this agent's own charts (from `group_charts`) plus whichever of its
     verified data points didn't make the top-level KPI strip (spec:
-    "charts/KPI cards from that panelist's verified data_points" —
+    "charts/KPI cards from that agent's verified data_points" —
     `_global_kpi_pool` guarantees every one of them renders exactly once,
     either here or in the strip), then the findings list filtered to
-    *verified* findings only (unsupported/contradicted findings are the
-    renderer-generated drop entries in `render_limitations`, never shown
+    *verified* findings only (unsupported/contradicted/disputed findings are
+    the renderer-generated drop entries in `render_limitations`, never shown
     here as if they were credible), each with a confidence badge and links
     to its own qualified sources in the appendix, then disagreement
     callouts."""
     lang = _lang(run.manifest)
     labels = LABELS[lang]
-    survivor = run.survivors[panelist_id]
+    survivor = run.survivors[agent_id]
     panel = survivor["panel"]
     verification = survivor["verification"]
-    synth_section = next(s for s in run.synthesis["sections"] if s["panelist"] == panelist_id)
+    synth_section = next(s for s in run.synthesis["sections"] if s["agent"] == agent_id)
     anchors = _qualified_source_anchors(merged_sources(run))
 
     narrative = "".join(
@@ -148,9 +148,9 @@ def render_section(run: Run, panelist_id: str, dp_anchors: frozenset[str]) -> st
         for item in synth_section["narrative"]
     )
 
-    charts, leftover = group_charts(_verified_chart_points(run, panelist_id))
-    strip_keys = {(p["panelist"], p["id"]) for p in _global_kpi_pool(run)[:KPI_STRIP_CAP]}
-    section_cards = [p for p in leftover if (p["panelist"], p["id"]) not in strip_keys]
+    charts, leftover = group_charts(_verified_chart_points(run, agent_id))
+    strip_keys = {(p["agent"], p["id"]) for p in _global_kpi_pool(run)[:KPI_STRIP_CAP]}
+    section_cards = [p for p in leftover if (p["agent"], p["id"]) not in strip_keys]
     # One block (chart or card) per line: keeps the section-charts area
     # diff-friendly in the goldens and lets a plain `grep -c "<svg"` count
     # distinct charts (test contract) instead of matching lines, since the
@@ -167,11 +167,11 @@ def render_section(run: Run, panelist_id: str, dp_anchors: frozenset[str]) -> st
     for finding in findings:
         confidence = finding["confidence"]
         source_links = ", ".join(
-            f'<a href="#{esc(anchors[f"{panelist_id}:{sid}"])}">{esc(f"{panelist_id}:{sid}")}</a>'
+            f'<a href="#{esc(anchors[f"{agent_id}:{sid}"])}">{esc(f"{agent_id}:{sid}")}</a>'
             for sid in finding["source_ids"]
         )
         finding_blocks.append(
-            f'<div class="finding" id="finding-{esc(panelist_id)}-{esc(finding["id"])}">'
+            f'<div class="finding" id="finding-{esc(agent_id)}-{esc(finding["id"])}">'
             f'<span class="confidence-badge confidence-{esc(confidence)}">'
             f'{esc(labels["confidence"][confidence])}</span>'
             f'<p class="finding-claim">{esc(finding["claim"])}</p>'
@@ -186,7 +186,7 @@ def render_section(run: Run, panelist_id: str, dp_anchors: frozenset[str]) -> st
     )
 
     body = narrative + charts_block + "".join(finding_blocks) + disagreements
-    return _wrap_section(f"section-{panelist_id}", HEADINGS[panelist_id][lang], body)
+    return _wrap_section(f"section-{agent_id}", HEADINGS[agent_id][lang], body)
 
 
 def render_risks(run: Run, dp_anchors: frozenset[str]) -> str:
@@ -221,9 +221,10 @@ def render_recommendations(run: Run, dp_anchors: frozenset[str]) -> str:
 def render_limitations(run: Run, dp_anchors: frozenset[str]) -> str:
     """Limitations (spec §8 item 9): the synthesizer's own `limitations`
     entries, plus renderer-generated drop entries built straight from the
-    verification records — every unsupported/contradicted finding and data
-    point, and every blocked/dead source — present even if the synthesizer
-    never mentioned them (§5.3: those items never reach synthesis at all)."""
+    verification records — every unsupported/contradicted/disputed finding
+    and data point, and every blocked/dead source — present even if the
+    synthesizer never mentioned them (§5.3: those items never reach
+    synthesis at all)."""
     lang = _lang(run.manifest)
     labels = LABELS[lang]
     roster = [e for e in run.manifest.get("roster", []) if isinstance(e, dict)]
@@ -242,11 +243,15 @@ def render_limitations(run: Run, dp_anchors: frozenset[str]) -> str:
                 drops.append(_render_drop(labels["dropped_finding_unsupported"], pid, f["id"]))
             elif f["verdict"] == "contradicted":
                 drops.append(_render_drop(labels["dropped_finding_contradicted"], pid, f["id"]))
+            elif f["verdict"] == "disputed":
+                drops.append(_render_drop(labels["dropped_finding_disputed"], pid, f["id"]))
         for d in sorted(verification["data_points"], key=lambda d: _numeric_suffix(d["id"])):
             if d["verdict"] == "unsupported":
                 drops.append(_render_drop(labels["dropped_data_point_unsupported"], pid, d["id"]))
             elif d["verdict"] == "contradicted":
                 drops.append(_render_drop(labels["dropped_data_point_contradicted"], pid, d["id"]))
+            elif d["verdict"] == "disputed":
+                drops.append(_render_drop(labels["dropped_data_point_disputed"], pid, d["id"]))
         for s in sorted(verification["sources"], key=lambda s: _numeric_suffix(s["id"])):
             if s["reachability"] == "blocked":
                 drops.append(_render_drop(labels["dropped_source_blocked"], pid, s["id"]))
@@ -268,14 +273,14 @@ _REF_PATTERN = re.compile(r"^(?P<pid>[^:]+):(?P<kind>F|D)(?P<num>[1-9][0-9]*)$")
 
 
 def _render_ref(ref: object, dp_anchors: frozenset[str]) -> str:
-    """Renders one synthesis ref (`'<panelist>:F<n>'` / `'<panelist>:D<n>'`)
+    """Renders one synthesis ref (`'<agent>:F<n>'` / `'<agent>:D<n>'`)
     as a superscript-style trace marker (spec §8 item 5). `F`-refs link to
     that finding's own anchor in its per-angle section
-    (`id="finding-<panelist>-F<n>"`, emitted by `render_section`) — every
+    (`id="finding-<agent>-F<n>"`, emitted by `render_section`) — every
     `F`-ref reaching here was already proven by `validate_synthesis` to
-    resolve to a *verified* finding of a surviving panelist, and
+    resolve to a *verified* finding of a surviving agent, and
     `render_section` renders exactly that set, so the anchor always exists,
-    unconditionally. `D`-refs link to `id="dp-<panelist>-D<n>"` (a chart
+    unconditionally. `D`-refs link to `id="dp-<agent>-D<n>"` (a chart
     point, a KPI-strip card, or a per-section leftover card — see
     `_global_kpi_pool`) *when the target exists*: `dp_anchors` (built once
     by `_all_dp_anchor_ids`) is the full set of ids this render will
@@ -307,10 +312,10 @@ def _render_refs(refs: Sequence[object], dp_anchors: frozenset[str]) -> str:
 _SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
-def _render_drop(template: str, panelist: str, item_id: str) -> str:
+def _render_drop(template: str, agent: str, item_id: str) -> str:
     """One renderer-generated limitations drop entry: `template` is a
-    localized `LABELS` string with a `{qualified_id}` placeholder; `panelist`
+    localized `LABELS` string with a `{qualified_id}` placeholder; `agent`
     and `item_id` are both closed-vocabulary/regex-constrained values
     already validated upstream, but `esc` still runs over the whole
     formatted string per the blanket escaping contract (spec §7)."""
-    return esc(template.format(qualified_id=f"{panelist}:{item_id}"))
+    return esc(template.format(qualified_id=f"{agent}:{item_id}"))
