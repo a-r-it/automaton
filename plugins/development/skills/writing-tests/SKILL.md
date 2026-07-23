@@ -28,7 +28,9 @@ brief; confirmed-bug ids + active scenarios → implementer brief).
   content, not by anyone's word. Bookkeeping under `.automaton/development/tests/<slug>/` is
   never committed.
 - **Never commit red.**
-- **Never stop to ask the user.** Decide every fork yourself and record the decision.
+- **Never stop to ask the user — never call AskUserQuestion.** The scope named at invocation
+  is the only user input this flow gets. Decide every fork yourself and record the decision;
+  anything unresolvable is a park, a drop, or a Stop with a report — not a question.
 
 ## The graph as your task list
 
@@ -42,6 +44,8 @@ TaskCreate:
   subject: "<stage name, verbatim from the graph>"
   description: |
     **Goal:** <one sentence — what leaving this stage produces, not how>
+    **Work:** <one or two sentences, plain words — what actually happens in this
+    stage: what gets read, decided, dispatched, or written, and by whom>
 ```
 
 Chain them so none can be entered before the one it follows:
@@ -64,31 +68,33 @@ edge is listed here, and quote the exact edge entry you are using. All transitio
 listed are FORBIDDEN.
 
 ```
-BASELINE  → DISCOVERY [scope's existing tests green]
-BASELINE  → STOP      [scope's tests red: report, write nothing]
-DISCOVERY → DESIGN    [scope→<slug>; test layout noted; in-scope production snapshotted]
-DESIGN    → CRITIQUE  [scenarios written or revised]
-CRITIQUE  → DESIGN    [Changes required or NEEDS_CONTEXT, and design rounds < 3]
-CRITIQUE  → ROUTE     [Approved / Approved with issues — or 3 rounds reached: exclude the still-flagged from the active set, log them parked, proceed]
-ROUTE     → IMPLEMENT [an implementer agent for the detected stack exists]
-ROUTE     → STOP      [no implementer for the stack: hand back the approved scenario doc]
-IMPLEMENT → VERIFY    [implementer returned]
-VERIFY    → IMPLEMENT [reds to fix (test defect), reds to drop at the bound, or production to restore-and-re-dispatch]
-VERIFY    → DESIGN    [an enabled test is red but faithful — actual ≠ the scenario's asserted value: the scenario is wrong / a missed bug — re-examine it once]
-VERIFY    → COMMIT    [completeness gate passes]
+Baseline  → Discovery [scope's existing tests green]
+Baseline  → Stop      [scope's tests red: report, write nothing]
+Discovery → Design    [scope→<slug>; test layout noted; in-scope production hashed]
+Design    → Critique  [scenarios written or revised]
+Critique  → Design    [Changes required or NEEDS_CONTEXT, and design rounds < 3]
+Critique  → Route     [Approved / Approved with issues — or 3 rounds reached: exclude the still-flagged from the active set, log them parked, proceed]
+Route     → Implement [an implementer agent for the detected stack exists]
+Route     → Stop      [no implementer for the stack: hand back the approved scenario doc]
+Implement → Verify    [implementer returned]
+Verify    → Implement [reds to fix (test defect), reds to drop at the bound, or production to restore-and-re-dispatch]
+Verify    → Design    [an enabled test is red but faithful — actual ≠ the scenario's asserted value: the scenario is wrong / a missed bug — re-examine it once]
+Verify    → Stop      [production changed and cannot be safely restored (file was dirty at Discovery): report files + hashes, write nothing more]
+Verify    → Commit    [completeness gate passes]
 ```
 
-Entry: BASELINE. Exit: COMMIT (success). STOP is the terminal for the two early exits.
+Entry: Baseline. Exit: Commit (success). Stop is the terminal for the early exits and the
+unrestorable-production abort.
 
 Guardrails:
 - Editing a file, running a tool, or dispatching a subagent does not itself change the current
   stage.
-- The two diagnostic loops are bounded: DESIGN↔CRITIQUE ≤ 3 rounds, IMPLEMENT↔VERIFY ≤ 3 fix
+- The two diagnostic loops are bounded: Design↔Critique ≤ 3 rounds, Implement↔Verify ≤ 3 fix
   rounds. At a bound, resolve rather than loop — park, drop, or restore (mechanics live in the
   edge guards and stages); a resolution does not extend the fix-round budget.
-- A `VERIFY → DESIGN` re-examination fires at most once per scenario; a scenario still red after
+- A `Verify → Design` re-examination fires at most once per scenario; a scenario still red after
   it is dropped, not looped again.
-- Never leave VERIFY toward COMMIT with red, with a production change, or with an active
+- Never leave Verify toward Commit with red, with a production change, or with an active
   scenario that has no test case (see the completeness gate).
 - A user decision to abort overrides the graph; nothing else does.
 
@@ -97,7 +103,7 @@ Guardrails:
 Tool how-to, never a second source of structural truth. Which edge to take is the section
 above's business.
 
-**BASELINE.** A "green after" signal is worthless unless it was green before — you could not
+**Baseline.** A "green after" signal is worthless unless it was green before — you could not
 tell your own regression from a pre-existing one — and you may not touch production to repair a
 red baseline anyway. Run the existing tests **for the scope of the work** (the module or
 package under test), not the whole project — a failure in unrelated code elsewhere is not your
@@ -108,24 +114,27 @@ Bash:
   command: <the project's scope-narrowed test command>
 ```
 
-All green → `BASELINE → DISCOVERY`. Any red → `BASELINE → STOP`: report the failing tests,
+All green → `Baseline → Discovery`. Any red → `Baseline → Stop`: report the failing tests,
 write nothing.
 
-**DISCOVERY.**
+**Discovery.**
 
 - Resolve the scope the user named (a module, class, file, or feature). If none was given, pick
   a coherent scope and proceed. Derive `<slug>` (kebab-case: `Cart` →
   `cart`; `:payments` → `payments`).
-- Note where the scope's test sources live — VERIFY validates the implementer's reported paths
+- Note where the scope's test sources live — Verify validates the implementer's reported paths
   against this. The stack and test libraries are the designer's to detect and record, not yours.
 - **Find the existing tests** already covering the scope (their paths and contents). You hand
   these to the designer and critic so the flow adds *incremental* value, not coverage the repo
   already has.
-- **Snapshot production (PROD-LOCK, part 1).** Copy every in-scope production file, plus record
-  its content hash, into `.automaton/development/tests/<slug>/snapshot/`. This is your reference
-  copy for detecting and undoing any production change — no VCS involved.
+- **Hash production (PROD-LOCK, part 1).** Record the content hash of every in-scope
+  production file into `.automaton/development/tests/<slug>/prod-hashes.txt` (one
+  `<hash>  <path>` line each). No copies are made — the project's version control already
+  holds the committed state; the hash is your tamper detector. For each file also note
+  whether it carries uncommitted local changes right now: a dirty file cannot be safely
+  auto-restored later.
 
-**DESIGN.** Scenarios are the language-neutral contract, at
+**Design.** Scenarios are the language-neutral contract, at
 `.automaton/development/tests/<slug>/scenarios.md`. Dispatch the designer (first pass, or a fix
 pass carrying the critic's findings):
 
@@ -162,9 +171,9 @@ Agent:
     Work from: <project directory>
 ```
 
-On its return, `DESIGN → CRITIQUE`.
+On its return, `Design → Critique`.
 
-**CRITIQUE.** Fresh eyes judge the scenarios against the real code. Dispatch the critic:
+**Critique.** Fresh eyes judge the scenarios against the real code. Dispatch the critic:
 
 ```
 Agent:
@@ -188,16 +197,16 @@ Agent:
     Work from: <project directory>
 ```
 
-- `Changes required` / `NEEDS_CONTEXT`, rounds remaining → `CRITIQUE → DESIGN`, the findings
+- `Changes required` / `NEEDS_CONTEXT`, rounds remaining → `Critique → Design`, the findings
   folded into the next designer brief.
-- 3 rounds without approval → `CRITIQUE → ROUTE` anyway, on that edge's guard.
+- 3 rounds without approval → `Critique → Route` anyway, on that edge's guard.
 
-**ROUTE.** Match the stack recorded in the scenario doc against the available
-`development:<stack>-test-implementer` agents. A match → `ROUTE → IMPLEMENT`. No implementer
-for the stack → `ROUTE → STOP`: the approved scenario doc is the deliverable; name the
+**Route.** Match the stack recorded in the scenario doc against the available
+`development:<stack>-test-implementer` agents. A match → `Route → Implement`. No implementer
+for the stack → `Route → Stop`: the approved scenario doc is the deliverable; name the
 implementers that do exist.
 
-**IMPLEMENT.** Dispatch the implementer. Pass only the **active** scenario blocks, the
+**Implement.** Dispatch the implementer. Pass only the **active** scenario blocks, the
 confirmed-bug ids, and the project's test conventions:
 
 ```
@@ -211,7 +220,7 @@ Agent:
     [the active `#### Scenario:` blocks, verbatim]
 
     ## Confirmed bugs
-    [ids from your confirmed-bug list — scenarios that survived a VERIFY → DESIGN re-examination
+    [ids from your confirmed-bug list — scenarios that survived a Verify → Design re-examination
     with the contract upheld. Disable a scenario as a bug-marker ONLY if its id is here; on the
     first pass this list is empty]
 
@@ -229,36 +238,41 @@ Agent:
     Work from: <project directory>
 ```
 
-On its return, `IMPLEMENT → VERIFY`.
+On its return, `Implement → Verify`.
 
-**VERIFY.** Run the checks; the edge you take is the first that applies.
+**Verify.** Run the checks; the edge you take is the first that applies.
 
-- **PROD-LOCK, part 2.** Re-hash every in-scope production file against the snapshot, and
+- **PROD-LOCK, part 2.** Re-hash every in-scope production file against `prod-hashes.txt`, and
   confirm every path in the implementer's "Files changed" is under the project's test sources.
-  Production changed → restore each changed production file by copying it back from
-  `.automaton/development/tests/<slug>/snapshot/`, then `VERIFY → IMPLEMENT` with a sharpened
-  warning. If it persists, keep only the test-file changes and record the violation.
+  Production changed → for each changed file that was **clean** at Discovery, restore it to its
+  pre-flow state through the project's version control, re-hash to confirm it matches the
+  recorded hash again, then `Verify → Implement` with a sharpened warning. A changed file that
+  was **dirty** at Discovery cannot be restored without destroying the user's uncommitted
+  work — do not touch it: `Verify → Stop`, reporting the exact files and hashes so the user
+  can revert deliberately. If a violation repeats after the warning, keep only the test-file
+  changes and record the violation.
 - **Green.** Run the scope's test command. For each red, take the edge that fits its cause:
   - the implementer's rendering is at fault (wrong assertion or setup vs the scenario), fix
-    rounds remaining → `VERIFY → IMPLEMENT` to fix the test;
+    rounds remaining → `Verify → Implement` to fix the test;
   - the rendering is faithful, but the code's actual output differs from the scenario's asserted
-    value → the scenario is wrong — a miss, possibly a bug the analysis missed → `VERIFY →
-    DESIGN` once: the designer corrects the expected value, or upholds it because the actual
+    value → the scenario is wrong — a miss, possibly a bug the analysis missed → `Verify →
+    Design` once: the designer corrects the expected value, or upholds it because the actual
     output contradicts the contract — an upheld scenario is a **confirmed bug**: add its id to
     your confirmed-bug list, and on re-implementation it renders as a disabled bug-marker;
-  - reds still failing at the fix-round bound → `VERIFY → IMPLEMENT` once more to remove exactly
+  - reds still failing at the fix-round bound → `Verify → Implement` once more to remove exactly
     those tests (a drop, not a fix — recorded in your report).
-- **Completeness gate** (all green + production untouched) → check, before COMMIT:
+- **Completeness gate** (all green + production untouched) → check, before Commit:
   - every **active** scenario maps to exactly one test case (enabled, or a confirmed-bug
     disabled marker, or explicitly dropped with a recorded reason);
   - the tests actually **compiled and were discovered** — not a no-source or unexpected
     zero-test run;
   - the scope regression command was actually executed, not skipped.
-  All satisfied → `VERIFY → COMMIT`. A hole here is not "green" — treat it as a red and route
-  to `IMPLEMENT` or re-dispatch with the missing context.
+  All satisfied → `Verify → Commit`. A hole here is not "green" — treat it as a red and route
+  to `Implement` or re-dispatch with the missing context.
 
-**COMMIT.** Commit **only the test files** (the paths from the implementer's report, validated
+**Commit.** Commit **only the test files** (the paths from the implementer's report, validated
 as under the test sources) through the project's version control, with a clear message, e.g.
-`test(<slug>): add unit tests from GWT scenarios`. Then print a short report:
+`test(<slug>): add unit tests from GWT scenarios`. Delete `prod-hashes.txt` — its job is done;
+of the bookkeeping only `scenarios.md` outlives the run. Then print a short report:
 scenarios designed / approved / parked, tests written / dropped / disabled as bug-markers,
 bugs revealed, final green count, the commit id, and anything the user should look at.
