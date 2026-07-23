@@ -1,6 +1,5 @@
 {
   "name": "automaton",
-  "version": "0.5.1",
   "owner": { "name": "a-r-it" },
   "metadata": { "description": "Claude Code skill pack: research, mnemic (knowledge base), development." },
   "plugins": [
