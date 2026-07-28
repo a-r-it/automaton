@@ -1,11 +1,12 @@
 # development
 
-A **Claude-Code-only** build of [Superpowers](https://github.com/obra/superpowers) — the agentic
-software-development methodology (brainstorm → plan → TDD → review → ship), merged with the
-Claude-Code-native fork [pcvelz/superpowers](https://github.com/pcvelz/superpowers).
+A **Claude-Code-only** development workflow: design → plan → TDD → review → ship, with the
+discipline enforced by the harness rather than volunteered by the model.
 
-Personal fork: multi-harness support (Codex/Cursor/Gemini/OpenCode) is removed; the CC-native task
-gates, model-routing hooks, and gate skills are kept.
+The methodology comes from [obra/superpowers](https://github.com/obra/superpowers) and its
+Claude-Code-native fork [pcvelz/superpowers](https://github.com/pcvelz/superpowers), which this
+build takes its inspiration and several of its skills from. It has since diverged: multi-harness
+support is gone, and the design phase has been rebuilt around the architect below.
 
 ## Requirements
 
@@ -13,11 +14,36 @@ Nothing below is bundled.
 
 | Needed for | Requirement |
 |---|---|
-| `/system-design` | The **OpenSpec CLI** on `PATH` — `npm i -g @fission-ai/openspec` (developed against 1.6.0). Without it the architect stops at its first command. |
-| Any hook | `bash` and `jq`. A missing `jq` makes a hook **fail open** — it passes silently instead of enforcing. On Windows without bash, `run-hook.cmd` exits successfully having run nothing. |
-| Model routing | `python3` |
+| `/system-design` | The **OpenSpec CLI** on `PATH` (developed against 1.6.0). Without it the architect stops at its first command. |
+| Any hook | `bash`, `jq`, `sed`. A missing `jq` makes a hook **fail open** — it passes silently instead of enforcing. On Windows without bash, `run-hook.cmd` exits successfully having run nothing. |
+| Model routing | `python3` — any 3.x. One stdlib-only script sanitises the routing file before it is injected. |
 | Visual companion | `node` |
 | Cross-model review (optional) | A Codex MCP server you configure yourself. The architect discloses a missing advisor pass and continues, so this weakens review rather than blocking it. |
+
+### Install
+
+```bash
+# the plugin
+claude plugin marketplace add https://github.com/a-r-it/automaton
+claude plugin install development@automaton
+
+# the architect's CLI
+npm i -g @fission-ai/openspec
+
+# jq, if you don't have it
+brew install jq          # macOS
+sudo apt install jq      # Debian/Ubuntu
+```
+
+`python3` ships with macOS and most Linux distributions — `python3 --version` to confirm. `npm`
+comes with `node`, so if the OpenSpec install worked you already have both. Then
+`/reload-plugins`, or start a new session.
+
+Check what landed:
+
+```bash
+openspec --version && jq --version && python3 --version && node --version
+```
 
 ## Two entry points
 
@@ -32,13 +58,6 @@ to `writing-plans`. Unchanged, and still where `developer-workflow` routes creat
 
 Either way, implementation is the same: `writing-plans` → `executing-plans` /
 `subagent-driven-development` → TDD → review → verification.
-
-## Install
-
-    claude plugin marketplace add https://github.com/a-r-it/automaton
-    claude plugin install development@automaton
-
-Then `/reload-plugins`.
 
 ## What's inside
 
@@ -111,5 +130,5 @@ notice is the only delivery mechanism, so it applies from the next session on.
 
 ## Credits
 
-Merge-port of **obra/superpowers** (Jesse Vincent) and **pcvelz/superpowers**, both MIT.
-See `NOTICE`.
+Built on **obra/superpowers** (Jesse Vincent) and **pcvelz/superpowers**, both MIT. Several skills
+here still descend directly from them. Original copyrights are retained — see `NOTICE`.
