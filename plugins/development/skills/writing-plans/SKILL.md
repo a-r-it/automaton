@@ -199,16 +199,16 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 If the plan contains any task with `userGate: true`, check whether the user already opted in (scans the three user-editable settings files Claude Code merges — project `settings.local.json` + `settings.json`, and user `~/.claude/settings.json`; missing files silently skipped):
 
 ```bash
-cat .claude/settings.local.json .claude/settings.json ~/.claude/settings.json 2>/dev/null | grep -q "post-task-complete-revalidate.sh"
+cat .claude/settings.local.json .claude/settings.json ~/.claude/settings.json 2>/dev/null | grep -q "post-task-complete-revalidate"
 ```
 
 If the pipeline exits 0 (the canonical user-gate hook is registered in any of those files) → **suppress the heads-up entirely**. They already enabled it.
 
 Otherwise, show this short heads-up before the Execution Handoff (substitute {N} and the task numbers):
 
-> Heads up — I tagged {N} task(s) as user-gate (Tasks #X, #Y, …). The plan runs end-to-end as-is. If you'd like automatic close-time enforcement, the JSON snippets are in `README.md` — paste them into `.claude/settings.json` (or `settings.local.json`). Happy to walk you through it; just say the word.
+> Heads up — I tagged {N} task(s) as user-gate (Tasks #X, #Y, …). The plan runs end-to-end as-is. If you'd like automatic close-time enforcement, `README.md` walks through it under "User-Thrown Gate Enforcement". Happy to set it up; just say the word.
 
-Internal reference (do NOT show): README sections `#force-re-validation-on-user-thrown-gate-close` + `#re-validate-gates-on-plan-complete-claims` in the plugin's `README.md`. Hooks: `hooks/examples/{post-task-complete-revalidate,stop-revalidate-user-gates}.sh`. Design doc: `docs/user-gate-flow.md`.
+Internal reference (do NOT show): the two hooks ship as extensionless files at `hooks/post-task-complete-revalidate` and `hooks/stop-revalidate-user-gates`. Neither is registered in the plugin's `hooks.json` — the user enables them from `.claude/settings.json`.
 
 Suppress entirely if no user-gate tasks were tagged. Do NOT turn this into an `AskUserQuestion`.
 
@@ -295,7 +295,7 @@ Without the axes, "looks good, keep going" closes are legal; with axes, the coor
 
 **Do NOT ask the user questions during write-plan.** The opinionated default is "tag it and move on". Users who wanted questions said "brainstorm". If the user's brief is vague about a gate's HOW, the flag `requiresUserSpecification: true` routes the question to execute time where `/specify-gate` handles it in 3-5 short multiple-choice prompts.
 
-See `skills/shared/task-format-reference.md` → "User-Thrown Gates" for the full metadata schema with all six gate-related keys (`userGate`, `tags`, `requiresUserSpecification`, `gateScope`, `failurePolicy`, `subagentBrief`), and `docs/user-gate-flow.md` for the end-to-end flow.
+See `skills/shared/task-format-reference.md` → "User-Thrown Gates" for the full metadata schema with all six gate-related keys (`userGate`, `tags`, `requiresUserSpecification`, `gateScope`, `failurePolicy`, `subagentBrief`), and README.md, User-Thrown Gate Enforcement, for the end-to-end flow.
 
 #### TaskCreate description — full structured body, not a summary
 

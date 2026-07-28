@@ -7,6 +7,37 @@ Claude-Code-native fork [pcvelz/superpowers](https://github.com/pcvelz/superpowe
 This is a personal fork: multi-harness support (Codex/Cursor/Gemini/OpenCode) is removed; the
 CC-native task gates, model-routing hooks, and gate skills are kept.
 
+## Requirements
+
+Everything below is external to the plugin — nothing here is bundled.
+
+| Needed for | Requirement |
+|---|---|
+| `/system-design` (the architect) | The **OpenSpec CLI** on `PATH` (`npm i -g @fission-ai/openspec`; developed against 1.6.0). Without it the architect cannot create or read a change, and the flow stops at its first command. |
+| Any bundled hook | `bash` and `jq`. A missing `jq` makes a hook **fail open** — it passes silently rather than enforcing. On Windows without bash, `run-hook.cmd` exits successfully having run nothing. |
+| Model routing | `python3` — the session-start notice sanitises the routing file before injecting it. |
+| Visual companion | `node`. |
+| Cross-model review (optional) | A Codex MCP server configured in your own settings; the plugin ships no MCP configuration. The architect's graphs proceed after disclosing a missing advisor pass, so this weakens review rather than blocking it. |
+
+The consilium's round record uses `shasum -a 256`, which is not present in every Linux or Windows environment.
+
+## Two entry points
+
+- **`/system-design [what you want to build]`** — launches the **architect**: a background agent
+  that turns intent into an approved OpenSpec change — proposal → per-capability delta specs →
+  design. It never implements. Each artifact is drafted, validated, reviewed by the read-only
+  `artifact-reviewer`, and put in front of you for approval. On the specs artifact it consults a
+  routed panel of read-only experts (`security-analyst` always; `api-designer`, `devops-engineer`,
+  `automotive-engineer`, `android-performance-engineer` by proposal content) whose MUST
+  requirements become the delta specs. Watch it with `claude agents`.
+- **`/brainstorm`** — the classic flow: explore, ask, offer approaches, write a design doc, hand
+  off to `writing-plans`. Unchanged, and still where `developer-workflow` routes creative work.
+
+Both ship. The architect is new; the older path stays untouched while it proves out.
+
+Phase 2 is the same either way: `writing-plans` → `executing-plans` /
+`subagent-driven-development` → TDD → review → verification.
+
 ## Install (local dev)
 
     claude plugin marketplace add /path/to/development
@@ -16,11 +47,16 @@ Then `/reload-plugins`.
 
 ## What's inside
 
-- 15 skills (TDD, systematic-debugging, brainstorming, writing/executing plans,
-  subagent-driven-development, code review, git worktrees, gates, developer-workflow)
-- 6 commands: `/brainstorm`, `/write-plan`, `/execute-plan`, `/gate-check`, `/specify-gate`, `/onboard`
-- Active hooks: SessionStart context injection + PreToolUse model-routing/tier/handoff guards
-- Opt-in enforcement hooks in `hooks/`
+- **16 skills** — TDD, systematic-debugging, brainstorming, writing/executing plans,
+  subagent-driven-development, writing-tests, code review, git worktrees, gates, developer-workflow
+- **7 commands** — `/system-design`, `/brainstorm`, `/write-plan`, `/execute-plan`, `/gate-check`,
+  `/specify-gate`, `/onboard`
+- **10 agents** — `architect` and `artifact-reviewer` (core), five consilium experts, three
+  test-authoring agents
+- **Registered hooks** — SessionStart context injection, plus PreToolUse guards on `TaskCreate`
+  (model tier), `Agent` (model routing) and `EnterPlanMode` (plan-mode ban)
+- **Dormant hooks** — eight more ship as files under `hooks/`, deliberately unregistered. Register
+  the ones you want in `.claude/settings.json`; each section below says what it does
 
 ## Credits
 
@@ -30,11 +66,9 @@ Merge-port of **obra/superpowers** (Jesse Vincent) and **pcvelz/superpowers**, b
 
 ## User-Thrown Gate Enforcement — Optional Flow
 
-*Canonical design doc: [`docs/user-gate-flow.md`](docs/user-gate-flow.md). The section below is a reader-facing summary.*
-
 This flow addresses a recurring failure: the user says "add a gate" or "verify it works" without specifying **how**, the agent invents a verification method, then finds it expensive at execution time and walks around it — closing the gate with an inline shortcut. The fix is a three-layer architecture that *never bothers the user during planning* and only surfaces a forced question when the agent genuinely can't proceed without one.
 
-**The hooks ship always-on** (registered in the plugin's `hooks.json`) — no `.claude/settings.json` edit needed. They sit inert until a user-thrown gate task exists. Disable all development hooks with `DEVELOPMENT_HOOKS=0`, or individual hooks with their per-hook guards (see Environment Variables).
+**The hooks ship dormant** — bundled as files, not registered in the plugin's `hooks.json`. Register them in `.claude/settings.json` to enable; they then sit inert until a user-thrown gate task exists. `DEVELOPMENT_HOOKS=0` disables every development hook, or use the per-hook guards (see Environment Variables).
 
 ### Design principle — don't bombard the user during planning
 
@@ -60,7 +94,7 @@ The user is only interrupted at execute time, and only when the alternative is t
 
 ### Activation
 
-Both hooks are always-on (registered in the plugin's `hooks.json`) — no `.claude/settings.json` edit needed. Disable them with `DEVELOPMENT_HOOKS=0` (all development hooks) or the per-hook guards below. When disabled:
+Both hooks ship dormant — register them in `.claude/settings.json` to enable. Once enabled, disable again with `DEVELOPMENT_HOOKS=0` (all development hooks) or the per-hook guards below. While unregistered or disabled:
 - `writing-plans` still tags gates (harmless extra metadata).
 - `/specify-gate` still exists but is never triggered automatically.
 - Nothing enforces evidence at close — behavior is identical to vanilla.
@@ -79,9 +113,7 @@ Tail the hook trace log while a tagged gate task is closing: `tail -F /tmp/claud
 
 ## Subagent Model Routing — Optional Flow
 
-*Canonical design doc: [`docs/model-routing-flow.md`](docs/model-routing-flow.md). The section below is a reader-facing summary.*
-
-This flow addresses a cost problem that frontier-priced models (Opus, Fable) made acute: plan execution via `subagent-driven-development` spawns an implementer plus two reviewers per task — plus re-dispatches for fixes and escalations — and every one of them inherits the session model by default. On a top-tier session, a ten-task plan means thirty-plus top-tier subagent dispatches, most doing work a cheaper model handles fine when the plan is well-specified. Prompt caching does not help here: caching discounts input tokens, while fan-out cost is dominated by freshly generated output. Routing lowers the per-token rate of dispatches; it does not impose token budgets or spend ceilings (see the design doc for boundaries).
+This flow addresses a cost problem that frontier-priced models (Opus, Fable) made acute: plan execution via `subagent-driven-development` spawns an implementer plus two reviewers per task — plus re-dispatches for fixes and escalations — and every one of them inherits the session model by default. On a top-tier session, a ten-task plan means thirty-plus top-tier subagent dispatches, most doing work a cheaper model handles fine when the plan is well-specified. Prompt caching does not help here: caching discounts input tokens, while fan-out cost is dominated by freshly generated output. Routing lowers the per-token rate of dispatches; it does not impose token budgets or spend ceilings.
 
 **The whole flow is opt-in, with a single switch: `.automaton/development/model-routing.json` in your project.** The enforcement gates ship with the plugin but are dormant — without that file every check no-ops and behavior is byte-identical to vanilla. No settings to edit, no hooks to register.
 
@@ -97,7 +129,7 @@ Skills prose is not enforcement; agents skip instructions under load. So every l
 
 Both gates fail open (parse errors never brick a session) and share a kill switch: `DEVELOPMENT_ROUTING_GUARD=0`.
 
-> **The execution-method handoff is now hook-enforced.** `pre-askuser-handoff-guard` ships always-on (in `hooks.json`), re-forcing the writing-plans handoff `AskUserQuestion`. Set `DEVELOPMENT_HOOKS=0` (all hooks) to disable it if you prefer `writing-plans` to choose subagent-driven vs inline itself.
+> **The execution-method handoff has a dormant guard.** `pre-askuser-handoff-guard` ships as a file but is not registered — `writing-plans` currently chooses subagent-driven vs inline itself. Register the hook in `.claude/settings.json` if you want the handoff re-forced as an `AskUserQuestion` instead.
 
 ### The tiers
 
@@ -132,8 +164,6 @@ Implementers (and fix re-dispatches) run at their task's tier. Spec and code-qua
 ---
 
 ## Workflow Configuration — Optional Flow
-
-*Canonical design doc: [`docs/workflow-config-flow.md`](docs/workflow-config-flow.md). The section below is a reader-facing summary.*
 
 ### Commit Strategy
 
@@ -171,7 +201,7 @@ Claude Code may automatically enter Plan mode during planning tasks, which confl
 
 Optional `PreToolUse` hook that blocks `git commit` while a native task is `in_progress`. Pending tasks pass through, so per-task commit flows work as intended.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/pre-commit-check-tasks` for how it parses the session transcript and which task states count as open.
 
@@ -181,7 +211,7 @@ Optional `PostToolUse` hook that blocks when Claude closes a **user-thrown gate*
 
 Non-gate tasks pass through silently. The hook only fires when `TaskUpdate` sets status to `completed`.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/post-task-complete-revalidate` for how it parses `json:metadata` and the `USER-ORDERED GATE` banner, and how the `DEVELOPMENT_USERGATE_GUARD=0` escape hatch works.
 
@@ -189,7 +219,7 @@ See the header of `hooks/post-task-complete-revalidate` for how it parses `json:
 
 Optional `Stop` hook that complements the PostToolUse hook above. It fires when Claude signals plan completion ("plan complete", "both gates passed", "implementation complete", etc.) but the transcript shows user-thrown gate tasks were closed without subsequent per-criterion proof. Requires Claude to post evidence in the form `AC: <criterion> — PROVEN BY <evidence>` before it can stop.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/stop-revalidate-user-gates` for the full list of completion keywords and the `DEVELOPMENT_USERGATE_STOP_GUARD=0` escape hatch.
 
@@ -199,7 +229,7 @@ Optional `PreToolUse` hook on `TaskUpdate` that refuses to move a task into `sta
 
 The hook does not silently refuse. Its stderr invites self-assessment first ("is this a hallucination — did you already do this work informally?"), offers three escalation paths (do the blocker, cancel it if truly obsolete, or raise the ordering to the user with AskUserQuestion), and explicitly warns against the bypass move of closing the blocker with status=completed without doing the work.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/pre-task-blockedby-enforce` for the transcript-walking logic and the `DEVELOPMENT_BLOCKEDBY_GUARD=0` escape hatch.
 
@@ -211,7 +241,7 @@ If a task's metadata carries `{"model": "haiku"}` and the coordinator dispatches
 
 When the task has no dispatch requirement in metadata, the hook passes silently.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/pre-agent-task-dispatch-validate` for the transcript-walking logic and the `DEVELOPMENT_DISPATCH_GUARD=0` escape hatch. Metadata keys are documented in `skills/shared/task-format-reference.md`.
 
@@ -221,7 +251,7 @@ Optional `PostToolUse` hook on `Agent` that fires the moment a subagent's `tool_
 
 When the task has no evidence requirement in metadata, the hook passes silently.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/post-agent-return-validate` for the metadata schema and the `DEVELOPMENT_AGENT_RETURN_GUARD=0` escape hatch.
 
@@ -239,7 +269,7 @@ Each line is pipe-separated: `TIMESTAMP | hook-name | task=N | event | reason`. 
 
 Optional `Stop`-event hook that blocks "fresh session later" / "context is full" deflections when real context usage is below 50%.
 
-**Always on** — registered in the plugin's `hooks.json`; no `.claude/settings.json` edit needed. Disable every development hook with `DEVELOPMENT_HOOKS=0`, or just this one with its per-hook guard (see Environment Variables).
+**Ships dormant** — the file is bundled but NOT registered in the plugin's `hooks.json`. Register it in `.claude/settings.json` (project or user) to enable it. Once enabled, `DEVELOPMENT_HOOKS=0` disables every development hook, or use this hook's own guard (see Environment Variables).
 
 See the header of `hooks/stop-deflection-guard` for the full list of blocked phrases, configuration environment variables, and fail-open behavior.
 

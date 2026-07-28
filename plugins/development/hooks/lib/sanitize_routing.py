@@ -12,7 +12,7 @@ prose, injection payloads, and secret-file contents are not the constrained
 schema, so they collapse to {} (the hook then emits no routing notice). Size-
 capped so a huge file can't stall the hook.
 
-The routing schema (see docs/model-routing-flow.md):
+The routing schema:
     {"mechanical": "haiku", "standard": "sonnet", "frontier": "inherit"}
 Values are model ids ("haiku", "claude-opus-4-8", "us.anthropic...") or the
 literal "inherit" -- all match a conservative model-id charset.

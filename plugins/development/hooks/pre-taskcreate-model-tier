@@ -108,7 +108,7 @@ if ! printf '%s' "$DESCRIPTION" | grep -q '```json:metadata'; then
         echo "     headers, then retry."
         echo "  3. If routing should not apply here, the user can delete the routing file."
         echo ""
-        echo "Full rationale: docs/model-routing-flow.md."
+        echo "Full rationale: README.md, Subagent Model Routing."
         echo "(Runtime disable: DEVELOPMENT_ROUTING_GUARD=0. Trace log: $TRACE_LOG)"
     } >&2
     exit 2
@@ -188,7 +188,7 @@ trace "?" "block" "missing-or-invalid-tier tier='$MODEL_TIER' subject=$SUBJECT"
     echo "  3. If routing should not apply to this project, the user can delete"
     echo "     .automaton/development/model-routing.json."
     echo ""
-    echo "Full rationale: docs/model-routing-flow.md."
+    echo "Full rationale: README.md, Subagent Model Routing."
     echo "(Runtime disable: DEVELOPMENT_ROUTING_GUARD=0. Trace log: $TRACE_LOG)"
 } >&2
 

@@ -272,7 +272,7 @@ trace "?" "block" "armed=true, required labels missing"
     echo "     the literal token CLARIFICATION in the question text and retry."
     echo "  3. The user can disable with DEVELOPMENT_ROUTING_GUARD=0."
     echo ""
-    echo "Tier/handoff rationale: docs/model-routing-flow.md"
+    echo "Tier/handoff rationale: README.md, Subagent Model Routing"
     echo "(Trace log: $TRACE_LOG)"
 } >&2
 
