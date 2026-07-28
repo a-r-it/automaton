@@ -12,8 +12,10 @@
 #   {"mechanical":"haiku","standard":"sonnet","frontier":"inherit"}
 #
 # The value "inherit" means any model (or none) is acceptable.
-# A concrete model value in task metadata ("model" key) overrides the tier;
-# in that case this hook defers to hooks/examples/pre-agent-task-dispatch-validate.sh.
+# A concrete model value in task metadata ("model" key) overrides the tier; in
+# that case this hook defers to hooks/pre-agent-task-dispatch-validate, which
+# owns pin enforcement. That hook ships DORMANT (not in hooks.json), so a pinned
+# dispatch is unchecked until the user registers it in .claude/settings.json.
 #
 # Decision order:
 #   1. DEVELOPMENT_ROUTING_GUARD=0 → allow.
@@ -249,7 +251,7 @@ PRIMARY_RESOLVED="${ALLOWED[0]}"
     echo "  3. Escalate to the user via AskUserQuestion if you believe the routing"
     echo "     mapping itself is wrong."
     echo
-    echo "Tier rules: docs/model-routing-flow.md"
+    echo "Tier rules: README.md, Subagent Model Routing"
     echo "(Runtime disable: DEVELOPMENT_ROUTING_GUARD=0. Trace log: $TRACE_LOG)"
 } >&2
 
