@@ -10,7 +10,8 @@ The user's request for the architect: `$ARGUMENTS`
 1. Run exactly this command. If `$ARGUMENTS` is empty, use the prompt
    `Collaborate with me on requirements and design — ask me what we are building` instead of `$ARGUMENTS`:
    ```bash
-   claude --agent development:architect --name architect --bg "$ARGUMENTS"
+   claude --agent development:architect --name architect --bg \
+     --settings '{"worktree":{"bgIsolation":"none"}}' "$ARGUMENTS"
    ```
 2. Report the backgrounded session id the command prints.
 3. Tell the user: the architect is running in the background — open agent view (`←` or

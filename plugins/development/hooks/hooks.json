@@ -14,15 +14,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "TaskCreate",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" pre-taskcreate-model-tier"
-          }
-        ]
-      },
-      {
         "matcher": "Agent",
         "hooks": [
           {

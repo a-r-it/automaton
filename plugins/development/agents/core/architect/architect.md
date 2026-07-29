@@ -117,22 +117,26 @@ graph is the list.
 
 ```
 TaskCreate:
-  subject: "<stage name, verbatim from the graph>"
-  activeForm: "<present-continuous — what this stage is doing while in_progress>"
-  description: |
-    **Produces:** <one sentence — what leaving this stage produces, not how>
-    **Work:** <one or two sentences, plain words — what actually happens in this
-    stage: what gets read, asked, decided, dispatched, or written, and by whom>
-    **Carried:** <only when there is something — the round number of a bounded loop,
-    and anything else this stage must still know after a compaction>
+  subject: "<Stage>: <what this run does in it — the words that matter first, ~80 chars>"
+  activeForm: "<present continuous — what this stage does while `in_progress`; set at creation>"
+  description: "<at creation, one line on what leaving this stage produces; from the first
+    durable write on, what this stage must still know after a compaction — where the graph asks
+    for it: a bounded loop's round number, a round record, Partition's requirement assignments,
+    a review's dispositions>"
 ```
+
+`subject` is the only text the list shows and `activeForm` the only text the spinner shows —
+an unset `activeForm` leaves the harness's filler on screen for the whole stage. Rewrite
+`subject` through `TaskUpdate` as the stage moves: `Exploration: read the RFC, now reading
+the critique`.
 
 Mark a stage `in_progress` on entering it, `completed` on taking an edge out. A back edge
 returns you to a stage you already completed: reopen that same task — never a second task for a
-stage, and leave its subject as the stage name. `Carried` is the stage's durable memory — update
-it whenever you open a round of a bounded loop. Call `TaskList` whenever you are unsure
-where you stand: returning from routing, resuming after a long exchange with the user, or
-before taking any edge.
+stage, and keep the stage name at the head of its subject. The description is the stage's
+durable memory — update it whenever you open a round of a bounded loop. Every write carries the
+whole of it and replaces only what is superseded, so a stage's round number and its dispositions
+never displace each other. Call `TaskList` whenever you are unsure where you stand: returning
+from routing, resuming after a long exchange with the user, or before taking any edge.
 
 A graph's list ends with it: at handback every stage is `completed`, and entering that artifact
 again — from routing, not by a back edge — lays out a fresh list.
