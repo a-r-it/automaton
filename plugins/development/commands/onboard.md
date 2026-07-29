@@ -139,6 +139,32 @@ One-line intro: third-party marketplaces do NOT auto-update by default, so new `
 
 4. **No** → write nothing.
 
+## Feature 4: OpenSpec Environment
+
+One-line intro: the architect writes into an OpenSpec surface — a project-local `openspec/` root, or a registered store when the artifacts should live outside the project. `/system-design` assumes that surface already exists; this is where it gets created. Full explanation: README.md → "Two entry points".
+
+If the OpenSpec CLI is not on `PATH`, say so and skip this feature — it is the one requirement the plugin does not bundle.
+
+```yaml
+AskUserQuestion:
+  question: "Where should the architect's OpenSpec artifacts live?"
+  header: "OpenSpec"
+  multiSelect: false
+  options:
+    - label: "A project root (recommended)"
+      description: "Runs `openspec init` here — creates openspec/ with config.yaml, specs/ and changes/ in this repository. Artifacts sit next to the code they describe."
+    - label: "A registered store"
+      description: "Runs `openspec store setup <id> --path <folder>` — artifacts live in a separate git-initialised folder, and every architect command carries the store flag. For work whose specs should not live in the project."
+    - label: "Neither for now"
+      description: "Nothing is created. The architect offers to create a surface on its first run instead."
+```
+
+- **A project root** → run `openspec init` in the project root and report the created path. A surface that already exists is a success, not a failure: say so and move on.
+- **A registered store** → ask for the store id and its folder, then run `openspec store setup <id> --path <folder>`. Report the registered id and the absolute path.
+- **Neither for now** → create nothing.
+
+After creating a surface, tell the user two things and do neither yourself: the surface is not committed — that is their call, and a change whose surface never entered version control cannot be read or validated on a fresh clone; and the architect's working directory, `.automaton/development/<slug>/`, is not meant to be committed, so their ignore file should cover `.automaton/`.
+
 ## Final step: remove the upstream double-install (optional)
 
 Installing `development` alongside the original `obra/superpowers` leaves both active at the same time. Every skill ships under both the `superpowers:` namespace and the `development:` namespace — the slash-command palette shows doubled entries for `brainstorming`, `writing-plans`, `executing-plans`, and every other shared skill, and the session-start skill loader may trigger either version ambiguously. This fork supersedes upstream, so the original is redundant once the fork is installed.
@@ -166,4 +192,4 @@ AskUserQuestion:
 
 ## Closing
 
-Report in one short block: the chosen scope, files written (confirmed absolute paths), features skipped, and how to undo each — delete the scope's `model-routing.json` (routing); delete the scope's `workflow.json` or remove its `commitStrategy` key (commit strategy); set `extraKnownMarketplaces["automaton"].autoUpdate` back to `false` in settings.json (auto-update). Do not commit. Do not re-ask any question.
+Report in one short block: the chosen scope, files written (confirmed absolute paths), features skipped, and how to undo each — delete the scope's `model-routing.json` (routing); delete the scope's `workflow.json` or remove its `commitStrategy` key (commit strategy); set `extraKnownMarketplaces["automaton"].autoUpdate` back to `false` in settings.json (auto-update); delete the created `openspec/` directory, or the store folder and its registration (OpenSpec environment). Do not commit. Do not re-ask any question.
