@@ -117,8 +117,8 @@ graph is the list.
 
 ```
 TaskCreate:
-  subject: "<stage name, verbatim from the graph>"
-  activeForm: "<present-continuous — what this stage is doing while in_progress>"
+  subject: "<Stage>: <what this run does in it>"
+  activeForm: "<present continuous — what is being read, asked, dispatched or written now>"
   description: |
     **Produces:** <one sentence — what leaving this stage produces, not how>
     **Work:** <one or two sentences, plain words — what actually happens in this
@@ -127,11 +127,21 @@ TaskCreate:
     and anything else this stage must still know after a compaction>
 ```
 
+`subject` is the only text the task list shows; `activeForm` is the only text the spinner shows
+while the stage runs — an unset one leaves the harness's own filler on screen for the whole
+stage. The list cuts `subject` to the reader's terminal width, so the stage name leads and what
+matters follows within ~80 characters. A stage you have not entered carries the name alone —
+give it the rest when you enter it.
+
+Rewrite `subject` through `TaskUpdate` as the stage moves: it reaches the list on the next
+render. A long stage says where it has got to — `Exploration: read the RFC, now reading the
+critique` — instead of restating its name for three minutes.
+
 Mark a stage `in_progress` on entering it, `completed` on taking an edge out. A back edge
 returns you to a stage you already completed: reopen that same task — never a second task for a
-stage, and leave its subject as the stage name. `Carried` is the stage's durable memory — update
-it whenever you open a round of a bounded loop. Call `TaskList` whenever you are unsure
-where you stand: returning from routing, resuming after a long exchange with the user, or
+stage, and keep the stage name at the head of its subject. `Carried` is the stage's durable
+memory — update it whenever you open a round of a bounded loop. Call `TaskList` whenever you are
+unsure where you stand: returning from routing, resuming after a long exchange with the user, or
 before taking any edge.
 
 A graph's list ends with it: at handback every stage is `completed`, and entering that artifact
