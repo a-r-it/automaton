@@ -10,7 +10,7 @@ reason not listed on the row that joins them, is FORBIDDEN.
 
 When the edge you are taking is inside a bounded loop, the announcement is also where the count
 lives — say which round it opens and against which bound:
-`Transition: Validation → Drafting (validate failed — validation round 2 of 3)`.
+`Transition: <current> → <next> (<reason> — <counter> round 2 of 3)`.
 
 A bound is written in one form and only one: `<counter> rounds < N` on the edge that opens a
 round, `N <counter> rounds reached` on the edge that resolves it — `loops` in place of `rounds`
@@ -21,19 +21,14 @@ Exploration → Questioning [ project state read; authoring contract pulled ]
 
 Questioning → Drafting    [ no requirement-affecting unknown remains ]
 
-Drafting    → Validation  [ proposal drafted or revised ]
+Drafting    → Review      [ proposal drafted or revised ]
 Drafting    → Exploration [ a variant the user chose moves the scope — the questions that
                             settled the old scope no longer cover it ]
 
-Validation  → Drafting    [ `openspec validate` failed, and validation rounds < 3 ]
-Validation  → Review      [ `openspec validate` clean ]
-Validation  → Approval    [ 3 validation rounds reached and still failing — present the
-                            proposal with the outstanding findings named; the user decides ]
-
-Review      → Validation  [ a finding was fixed in the document, so it has changed since it
-                            was last validated ]
-Review      → Approval    [ every finding dispositioned, and the document has not changed
-                            since it was last validated ]
+Review      → Drafting    [ a finding needs a change to the document, and review rounds < 3 ]
+Review      → Approval    [ every finding dispositioned
+                          | 3 review rounds reached and findings are still open — present the
+                            proposal with them named; the user decides ]
 
 Approval    → Drafting    [ the user asked for changes ]
 ```
@@ -50,11 +45,9 @@ Guardrails:
 - Editing an artifact, asking the user a question, or calling a tool does not itself change the
   current stage.
 - **Rounds are counted only where you run or dispatch something.** In this graph that is
-  `Validation`, and its round is a **pair**: one `Validation → Drafting` plus the
-  `Drafting → Validation` that follows it (bound: 3). At the bound resolve rather than loop —
-  take `Validation → Approval` and put the outstanding findings in front of the user.
-  `Review → Validation → Review` is not a loop of its own: the return either leaves for
-  Approval or passes through Drafting, which the validation bound already counts.
+  `Review`, and its round is a **pair**: one `Review → Drafting` plus the `Drafting → Review`
+  that follows it (bound: 3). At the bound resolve rather than loop — take `Review → Approval`
+  and put the outstanding findings in front of the user.
 - **Working with the user is not counted at all.** Ask as many questions as the work needs;
   travel `Drafting → Exploration` and come back as often as the scope keeps moving; take the
   rework at Approval as many times as they ask for it. None of it has a round number, and none
@@ -64,8 +57,8 @@ Guardrails:
   schema is the project's, and it differs between projects and machines. To know what a
   document contains, read it; to know what it must contain, pull its instructions.
 - **Cosmetic** is wording, typos, and formatting — nothing else. A fix applied at Approval
-  without re-validating is cosmetic by that definition; anything that changes what the
-  document says takes the rework edge instead.
+  without taking `Approval → Drafting` is cosmetic by that definition; anything that changes
+  what the document says takes that edge instead.
 - **Abort.** A user decision to abort overrides the graph; nothing else does. It is not a
   transition and has no edge: stop at the stage you are on and leave its task `in_progress`.
   Hand nothing back.
@@ -128,16 +121,6 @@ in the session cwd and cannot find the root on its own.
   re-scope, not a choice inside this stage: if the user takes it, say so and take
   `Drafting → Exploration`.
 
-**Validation.**
-
-- Run it once per entry into this stage. What it reports decides the edge — fixing is
-  Drafting's work, not this stage's:
-
-  ```
-  Bash:
-    command: openspec validate <slug> [--store <id>]
-  ```
-
 **Review.**
 
 - You do not review your own draft — dispatch fresh eyes:
@@ -163,9 +146,8 @@ in the session cwd and cannot find the root on its own.
   yours to take or leave. The dispositions go into this stage's task description: they travel in
   the handback, and a compaction must not be able to take them.
 - All of it happens inside this stage — open no tasks for findings.
-- Dispatch a review for a draft the reviewer has not seen. Arriving here after a re-validation
-  that only carried out the fixes you already dispositioned, do not dispatch again — confirm
-  every finding is dispositioned and leave.
+- Drafting is the only way in, so every arrival carries a draft the reviewer has not seen:
+  dispatch on each one. What a round costs is a dispatch, which is why it is bounded.
 
 **Approval.**
 
@@ -174,8 +156,8 @@ in the session cwd and cannot find the root on its own.
   > "Proposal written to `<path>`. Please read it and tell me if you want any changes before we
   > move on to the specs."
 
-- Arriving here at a bound — validation still failing — name it in that message; the user is
-  deciding with it in view, not around it.
+- Arriving here at a bound — findings still open — name them in that message; the user is
+  deciding with them in view, not around them.
 - Wait for their response. Cosmetic fixes: apply directly. Proceed only once they approve.
 - Approved, cosmetic fixes applied: commit this artifact through the project's version control
   — `docs(openspec): propose <what it settles>`. Then leave. Committing before the fixes would
@@ -188,5 +170,5 @@ paths, so the path is always recoverable and never belongs in a handback. What i
 only you can:
 
 - that the **user approved** — `done` means "a file exists", never "we settled it";
-- that validation came back **clean**, and at which round — `status` does not carry it;
-- the **review dispositions**, rejected findings included, with their stated reasons.
+- the **review dispositions**, rejected findings included, with their stated reasons — and, if
+  it left at the bound, which findings are still open.

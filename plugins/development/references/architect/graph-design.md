@@ -10,7 +10,7 @@ reason not listed on the row that joins them, is FORBIDDEN.
 
 When the edge you are taking is inside a bounded loop, the announcement is also where the count
 lives — say which round it opens and against which bound:
-`Transition: Validation → Drafting (validate failed — validation round 2 of 3)`.
+`Transition: <current> → <next> (<reason> — <counter> round 2 of 3)`.
 
 A bound is written in one form and only one: `<counter> rounds < N` on the edge that opens a
 round, `N <counter> rounds reached` on the edge that resolves it — `loops` in place of `rounds`
