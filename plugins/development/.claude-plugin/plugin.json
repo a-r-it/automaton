@@ -16,7 +16,6 @@
     "./agents/consilium/automotive-engineer.md",
     "./agents/consilium/devops-engineer.md",
     "./agents/consilium/security-analyst.md",
-    "./agents/testing/unit-test-writer.md",
     "./agents/testing/test-scenario-designer.md",
     "./agents/testing/test-scenario-critic.md",
     "./agents/testing/kotlin-test-implementer.md"
