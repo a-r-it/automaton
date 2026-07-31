@@ -108,7 +108,7 @@ When dispatching an implementer subagent:
 
 ## Model Selection
 
-Use the least powerful model that can handle each role to conserve cost and increase speed. You do NOT hard-code a literal `model:` — our routing hooks own that. Signal the intended tier in the task's metadata (`"modelTier"`); `pre-agent-model-routing` resolves it to a concrete model and enforces the dispatch against it (see the model-routing note in Bounded Parallel Dispatch). Your job here is judgment: which tier fits which role.
+Use the least powerful model that can handle each role to conserve cost and increase speed. You do NOT hard-code a literal `model:` — signal the intended tier in the task's metadata (`"modelTier"`). Your job here is judgment: which tier fits which role.
 
 **Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): `mechanical` tier. Most implementation tasks are mechanical when the plan is well-specified.
 
@@ -398,7 +398,7 @@ The Red Flag above forbids overlapping writers, not parallelism. Dispatch concur
 - **Read-only agents are always parallel-safe**: audits, log analysis, verification gates, long-running test suites (these are also ideal for free local agent types while implementation continues).
 - **Implementers may run concurrently ONLY when** their tasks' `files` lists share no path AND neither task appears in the other's `blockedBy` chain. The `files` metadata IS the test — no overlap means no conflict.
 - **Never** two writers on one file, and never use parallelism to skip reviews: each task still gets its own task review (spec + quality) as it completes, and the one broad whole-branch review still runs once at the end.
-- Mark every parallel task `in_progress` BEFORE dispatching its agent — model routing resolves each dispatch against the union of in-progress tiers, and an unmarked task's dispatch will be blocked against the wrong tier.
+- Mark every parallel task `in_progress` BEFORE dispatching its agent.
 - When overlap is uncertain, serialize. The sequential per-task loop above remains the default; parallelism is the optimization, not the baseline.
 
 ## Task Persistence Sync
