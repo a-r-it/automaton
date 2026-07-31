@@ -11,8 +11,7 @@ more, nothing less) and is well-built (clean, tested, maintainable)
 Task tool (general-purpose):
   description: "Review Task N (spec + quality)"
   # No literal model: pin — the review task's `modelTier` metadata
-  # (chosen per SKILL.md Model Selection, scaled to the diff) is what
-  # signals the tier; pre-agent-model-routing resolves and enforces it.
+  # (chosen per SKILL.md Model Selection, scaled to the diff) signals the tier.
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
     requirements, then whether it is well-built. This is a task-scoped gate,

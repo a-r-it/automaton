@@ -1,7 +1,7 @@
 {
   "name": "development",
   "description": "Claude-Code-only development workflows: brainstorming, planning, TDD, debugging, code review, gates, and model-routing workflows. Merge-port of obra/superpowers + pcvelz/superpowers.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": {
     "name": "a-r-it"
   },
@@ -16,6 +16,7 @@
     "./agents/consilium/automotive-engineer.md",
     "./agents/consilium/devops-engineer.md",
     "./agents/consilium/security-analyst.md",
+    "./agents/testing/unit-test-writer.md",
     "./agents/testing/test-scenario-designer.md",
     "./agents/testing/test-scenario-critic.md",
     "./agents/testing/kotlin-test-implementer.md"
