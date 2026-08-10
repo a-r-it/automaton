@@ -11,7 +11,7 @@ Execute plan by dispatching a fresh implementer subagent per task, a single task
 
 **Core principle:** Fresh subagent per task + one task review (spec + quality) + broad final review = high quality, fast iteration
 
-**File handoffs:** Keep bulk text out of your context. Task briefs, implementer reports, and review diffs move as files under the scratch dir (`scripts/sdd-workspace` prints it: `<repo-root>/.development/sdd`), not as pasted prose. You curate the pointers; the subagents read the files.
+**File handoffs:** Keep bulk text out of your context. Task briefs, implementer reports, and review diffs move as files under the scratch dir (`scripts/sdd-workspace`, next to this skill, prints it: `<repo-root>/.development/sdd`), not as pasted prose. You curate the pointers; the subagents read the files.
 
 **Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, a Pre-Flight conflict to adjudicate, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
@@ -104,7 +104,7 @@ When dispatching an implementer subagent:
 1. Read the task's description via TaskGet — metadata is embedded as a `json:metadata` code fence at the end
 2. Parse the metadata JSON and map fields (files, acceptanceCriteria, verifyCommand, modelTier) to the implementer prompt sections
 3. The implementer should receive ALL structured data — don't make them parse it from prose
-4. Hand over bulk task text as a FILE: run `scripts/task-brief PLAN_FILE N` (it writes the task's full text under `.development/sdd/` and prints the path), and point the implementer at that brief file rather than pasting the task text into the dispatch (see File Handoffs)
+4. Hand over bulk task text as a FILE: run `"${CLAUDE_PLUGIN_ROOT}/scripts/task-brief" PLAN_FILE N "$(scripts/sdd-workspace)"` (it writes the task's full text into that directory and prints the path), and point the implementer at that brief file rather than pasting the task text into the dispatch (see File Handoffs)
 
 ## Model Selection
 
@@ -129,7 +129,7 @@ Use the least powerful model that can handle each role to conserve cost and incr
 
 Implementer subagents report one of four statuses (the short summary; the full detail is in the report file). Handle each appropriately:
 
-**DONE:** Generate the review package — `scripts/review-package BASE HEAD` (run from this skill's `scripts/` dir; it prints the unique file path it wrote). BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Then dispatch the task reviewer with the printed `[DIFF_FILE]` path.
+**DONE:** Generate the review package — `"${CLAUDE_PLUGIN_ROOT}/scripts/review-package" --workdir "$(scripts/sdd-workspace)" --task N --round I --range BASE HEAD` (round I starts at 1, +1 per re-review; it prints the file path it wrote). BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Then dispatch the task reviewer with the printed `[DIFF_FILE]` path.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 
@@ -172,7 +172,7 @@ final whole-branch review. When you fill the task reviewer template:
   between components ("same layout as X", "matches Y"). The reviewer's
   template already carries the process rules (YAGNI, test hygiene, review
   method) — the constraints block is for what THIS project's spec demands.
-- Hand the reviewer its diff as a file: run `scripts/review-package BASE HEAD`
+- Hand the reviewer its diff as a file: run `"${CLAUDE_PLUGIN_ROOT}/scripts/review-package" --workdir "$(scripts/sdd-workspace)" --task N --round I --range BASE HEAD`
   and pass the printed `[DIFF_FILE]` path. The output never enters your own
   context, and the reviewer sees the commit list, stat summary, and full diff
   with context in one Read call. Use the BASE you recorded before dispatching
@@ -205,8 +205,7 @@ is re-read on every later turn. Hand artifacts over as files. Resolve the
 scratch dir once with `scripts/sdd-workspace` (it prints
 `<repo-root>/.development/sdd` and ensures it self-ignores):
 
-- **Task brief:** before dispatching an implementer, run `scripts/task-brief
-  PLAN_FILE N` — it extracts the task's full text to a uniquely named file
+- **Task brief:** before dispatching an implementer, run `"${CLAUDE_PLUGIN_ROOT}/scripts/task-brief" PLAN_FILE N "$(scripts/sdd-workspace)"` — it extracts the task's full text to a uniquely named file
   (`…/task-N-brief.md`) and prints the path. Compose the dispatch so the
   brief stays the single source of requirements. Your dispatch should
   contain: (1) one line on where this task fits in the project; (2) the
@@ -263,7 +262,7 @@ You: I'm using Subagent-Driven Development to execute this plan.
 
 Task 1: Hook installation script
 
-[Run scripts/task-brief plan.md 1 → .development/sdd/task-1-brief.md]
+[Run task-brief plan.md 1 "$(sdd-workspace)" → .development/sdd/task-1-brief.md]
 [Dispatch implementer: brief path + report path + scene-setting context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
@@ -277,7 +276,7 @@ You: "User level (~/.config/development/hooks/)"
   - 5/5 passing, output pristine
   - Report: .development/sdd/task-1-report.md
 
-[Run scripts/review-package BASE HEAD → .development/sdd/review-…​.diff]
+[Run review-package --workdir … --task 1 --round 1 --range BASE HEAD → .development/sdd/review-task-1-r1.diff]
 [Dispatch task reviewer: brief + report + diff file + global constraints]
 Task reviewer:
   Spec Compliance: ✅ Spec compliant
@@ -360,13 +359,13 @@ Done!
 - Skip the broad whole-branch final review at the end
 - Proceed with unfixed Critical/Important issues
 - Dispatch parallel implementers whose tasks' `files` overlap or that appear in each other's `blockedBy` chain (write conflicts — disjoint tasks and read-only agents MAY run in parallel; see Bounded Parallel Dispatch)
-- Make a subagent read the whole plan file (hand it its task brief — `scripts/task-brief` — instead)
+- Make a subagent read the whole plan file (hand it its task brief — `${CLAUDE_PLUGIN_ROOT}/scripts/task-brief` — instead)
 - Skip scene-setting context (subagent needs to understand where task fits)
 - Ignore subagent questions (answer before letting them proceed)
 - Accept "close enough" on spec compliance (reviewer found spec issues = not done)
 - Skip review loops (reviewer found issues = fix = review again)
 - Let implementer self-review replace actual review (both are needed)
-- Dispatch a task reviewer without a diff file — generate it first (`scripts/review-package BASE HEAD`) and name the printed `[DIFF_FILE]` path in the prompt
+- Dispatch a task reviewer without a diff file — generate it first (`${CLAUDE_PLUGIN_ROOT}/scripts/review-package` with the task's `--range BASE HEAD`) and name the printed `[DIFF_FILE]` path in the prompt
 - Move to next task while the review has open Critical/Important issues
 - Re-dispatch a task the progress ledger already marks complete — check the ledger (and `git log`) after any compaction or resume
 

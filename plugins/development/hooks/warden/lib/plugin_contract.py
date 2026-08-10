@@ -13,6 +13,7 @@ class AgentType(StrEnum):
     ARCHITECT's value is the sandbox-verification target (plan Task 5)."""
 
     ARCHITECT = "development:architect"
+    FEATURE_DEVELOPMENT = "development:feature-development"
 
     @classmethod
     def from_alias(cls, alias: str) -> AgentType | None:
@@ -21,7 +22,17 @@ class AgentType(StrEnum):
 
 _ALIASES: dict[str, AgentType] = {
     "architect": AgentType.ARCHITECT,
+    "feature-development": AgentType.FEATURE_DEVELOPMENT,
 }
+
+
+class DispatchRole(StrEnum):
+    """Wire subagent_type strings of the feature-development worker agents; the
+    model_routing rule keys role-aware enforcement on them."""
+
+    IMPLEMENTER = "development:implementer"
+    TASK_REVIEWER = "development:task-reviewer"
+    CODE_REVIEWER = "development:code-reviewer"
 
 
 class EnvVar(StrEnum):

@@ -358,7 +358,7 @@ never edits — everything it returns is advice you disposition.
 - Arriving here at a bound — validation still failing, or the advisor never ran — name it in
   that message; the user decides with it in view, not around it.
 - Cosmetic fixes: apply directly. Proceed only once they approve.
-- Approved, cosmetic fixes applied: commit this artifact through the project's version control
+- Approved, cosmetic fixes applied: commit this artifact with git
   — `docs(openspec): specify <what it settles>`; every delta spec of this change goes in the one
   commit. Then leave. Committing before the fixes would put a text into history that is not the
   one the user approved.

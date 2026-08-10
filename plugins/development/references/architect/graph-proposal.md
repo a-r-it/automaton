@@ -159,7 +159,7 @@ in the session cwd and cannot find the root on its own.
 - Arriving here at a bound — findings still open — name them in that message; the user is
   deciding with them in view, not around them.
 - Wait for their response. Cosmetic fixes: apply directly. Proceed only once they approve.
-- Approved, cosmetic fixes applied: commit this artifact through the project's version control
+- Approved, cosmetic fixes applied: commit this artifact with git
   — `docs(openspec): propose <what it settles>`. Then leave. Committing before the fixes would
   put a text into history that is not the one the user approved.
 
