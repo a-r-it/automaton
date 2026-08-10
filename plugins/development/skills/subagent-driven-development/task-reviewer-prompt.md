@@ -166,7 +166,7 @@ Task tool (general-purpose):
 ```
 
 **Placeholders:**
-- `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
+- `[BRIEF_FILE]` — REQUIRED: the task brief file (`${CLAUDE_PLUGIN_ROOT}/scripts/task-brief PLAN N DIR`
   prints the path; same file the implementer worked from)
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
   the plan's Global Constraints section or the spec: exact values, formats,
@@ -177,7 +177,7 @@ Task tool (general-purpose):
 - `[BASE_SHA]` — commit before this task
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
-  package to (`scripts/review-package BASE HEAD` prints the unique path it
+  package to (`${CLAUDE_PLUGIN_ROOT}/scripts/review-package` with the task's `--range BASE HEAD` prints the unique path it
   wrote; the package never enters the controller's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
