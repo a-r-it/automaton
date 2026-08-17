@@ -1,13 +1,16 @@
 {
   "name": "development",
-  "description": "Claude-Code-only development workflows: brainstorming, planning, TDD, debugging, code review, gates, and model-routing workflows. Merge-port of obra/superpowers + pcvelz/superpowers.",
-  "version": "0.4.0",
+  "description": "Claude-Code-only development workflows: OpenSpec design, planning, TDD, debugging, code review, gates, and model-routing workflows. Merge-port of obra/superpowers + pcvelz/superpowers.",
+  "version": "0.5.0",
   "author": {
     "name": "a-r-it"
   },
   "homepage": "https://github.com/a-r-it/automaton",
   "repository": "https://github.com/a-r-it/automaton",
   "license": "MIT",
+  "workflows": [
+    "./workflows/"
+  ],
   "agents": [
     "./agents/core/architect/architect.md",
     "./agents/core/artifact-reviewer.md",
@@ -15,7 +18,6 @@
     "./agents/core/feature-development/task-reviewer.md",
     "./agents/core/feature-development/code-reviewer.md",
     "./agents/core/feature-development/task-planner.md",
-    "./agents/core/feature-development/feature-development.md",
     "./agents/consilium/android-performance-engineer.md",
     "./agents/consilium/api-designer.md",
     "./agents/consilium/automotive-engineer.md",

@@ -9,15 +9,6 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/warden.py\" --agents architect"
           }
         ]
-      },
-      {
-        "matcher": "^Agent$",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/warden.py\" --agents feature-development"
-          }
-        ]
       }
     ]
   }
