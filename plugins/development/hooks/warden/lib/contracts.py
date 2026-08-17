@@ -19,23 +19,6 @@ def _str(raw: dict[str, Any], key: str, default: str = "") -> str:
 
 
 @dataclasses.dataclass
-class AgentInput:
-    """The Agent tool_input fields model_routing reads."""
-
-    model: str = ""
-    subagent_type: str = ""
-
-    @staticmethod
-    def from_dict(raw: Any) -> AgentInput:
-        if not isinstance(raw, dict):
-            raw = {}
-        return AgentInput(
-            model=_str(raw, Field.MODEL),
-            subagent_type=_str(raw, Field.SUBAGENT_TYPE),
-        )
-
-
-@dataclasses.dataclass
 class HookPayload:
     hook_event_name: str = ""
     tool_name: str = ""
@@ -67,6 +50,3 @@ class HookPayload:
             tool_input=tool_input,
             problems=problems,
         )
-
-    def agent_input(self) -> AgentInput:
-        return AgentInput.from_dict(self.tool_input)

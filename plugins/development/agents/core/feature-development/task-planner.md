@@ -57,9 +57,8 @@ Each task's description ends with a `json:metadata` fence carrying `files`,
 `verifyCommand`, `acceptanceCriteria`, and `modelTier` — `mechanical` (1-2 files,
 complete spec with code in the steps, no design judgment; most tasks in a well-specified
 plan), `standard` (multi-file integration, pattern matching, debugging), or `frontier`
-(design/architecture judgment); spec completeness wins ties. NO user-gate keys of any
-kind (`userGate`, `requiresUserSpecification`, evidence tokens, banners — none of it,
-ever).
+(design/architecture judgment); spec completeness wins ties. NO keys beyond these
+four — ever.
 
 ## Self-Review (before reporting)
 

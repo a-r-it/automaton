@@ -4,7 +4,7 @@ A Claude Code **marketplace** named `automaton` that ships three plugins:
 
 - **research** (`research:`) — structured web research: the `research:research` skill (scout/analyst agents) plus `research:business-research`, a multi-analyst business panel that produces a single self-contained, source-verified HTML report
 - **mnemic** (`mnemic:`) — per-project knowledge base that captures Claude Code conversations into typed wiki articles; queryable and compounds over time
-- **development** (`development:`) — OpenSpec / dev-workflow toolkit: brainstorming, planning, TDD, debugging, code review, gates
+- **development** (`development:`) — OpenSpec / dev-workflow toolkit: architect design flow, background feature development, TDD, debugging, code review
 
 ## Requirements
 

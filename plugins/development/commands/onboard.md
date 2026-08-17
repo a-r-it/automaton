@@ -141,7 +141,7 @@ One-line intro: third-party marketplaces do NOT auto-update by default, so new `
 
 ## Final step: remove the upstream double-install (optional)
 
-Installing `development` alongside the original `obra/superpowers` leaves both active at the same time. Every skill ships under both the `superpowers:` namespace and the `development:` namespace — the slash-command palette shows doubled entries for `brainstorming`, `writing-plans`, `executing-plans`, and every other shared skill, and the session-start skill loader may trigger either version ambiguously. This fork supersedes upstream, so the original is redundant once the fork is installed.
+Installing `development` alongside the original `obra/superpowers` leaves both active at the same time. Every skill ships under both the `superpowers:` namespace and the `development:` namespace — the slash-command palette shows doubled entries for `test-driven-development`, `systematic-debugging`, and every other shared skill, and the session-start skill loader may trigger either version ambiguously. This fork supersedes upstream, so the original is redundant once the fork is installed.
 
 Assess for yourself whether both are actually present. This fork lives at `~/.claude/plugins/marketplaces/automaton/`; the upstream plugin would sit right next to it at `~/.claude/plugins/marketplaces/superpowers-marketplace/`, or — if it came from the official plugin directory instead — be registered as `superpowers@claude-plugins-official` in `~/.claude/plugins/installed_plugins.json`.
 
