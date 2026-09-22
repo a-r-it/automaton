@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Install this plugin's OpenSpec schema and config into a surface — a project
+# root or a store folder.
+#
+# Writes exactly two paths and nothing else:
+#   <surface>/openspec/schemas/development/   (4 files, replaced wholesale)
+#   <surface>/openspec/config.yaml            (overwritten)
+# specs/, changes/, archive/ and every other schema under schemas/ belong to the
+# project and are never touched. Schemas coexist by name, so a project schema
+# called anything else keeps resolving exactly as before.
+#
+# Overwriting is unconditional by design: the caller decides, not this script.
+# config.yaml is the one file that may carry the project's own work — pass
+# --backup to copy it aside first. The schema is ours and is simply replaced.
+#
+# Usage: openspec-schema SURFACE [--backup]
+set -euo pipefail
+
+usage() { echo "usage: openspec-schema SURFACE [--backup]" >&2; exit 2; }
+
+surface=""; backup=no
+while [ $# -gt 0 ]; do
+  case $1 in
+    --backup) backup=yes; shift ;;
+    -*)       usage ;;
+    *)        [ -z "$surface" ] || usage; surface=$1; shift ;;
+  esac
+done
+[ -n "$surface" ] || usage
+[ -d "$surface/openspec" ] || {
+  echo "no openspec/ in $surface — run 'openspec init --tools none' there first" >&2
+  exit 2
+}
+
+src="$(cd "$(dirname "$0")/.." && pwd)"
+dst_schema="$surface/openspec/schemas/development"
+dst_config="$surface/openspec/config.yaml"
+
+if [ "$backup" = yes ] && [ -f "$dst_config" ]; then
+  bak="$dst_config.bak.$(date +%Y%m%d-%H%M%S)"
+  cp "$dst_config" "$bak"
+  echo "backed up: $bak"
+fi
+
+mkdir -p "$surface/openspec/schemas"
+rm -rf "$dst_schema"
+cp -R "$src/openspec/schemas/development" "$dst_schema"
+cp "$src/openspec/config.yaml" "$dst_config"
+
+echo "installed into $surface/openspec/: schemas/development/ (4 files), config.yaml"
+echo "verify from that directory:"
+echo "  openspec schema which development --json   # expect \"source\": \"project\""
+echo "  openspec schema validate development"
