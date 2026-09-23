@@ -12,6 +12,7 @@ class HookEvent(StrEnum):
 
 class Tool(StrEnum):
     ENTER_PLAN_MODE = "EnterPlanMode"
+    AGENT = "Agent"
 
 
 class Field(StrEnum):
@@ -23,3 +24,6 @@ class Field(StrEnum):
     TRANSCRIPT_PATH = "transcript_path"
     CWD = "cwd"
     TOOL_INPUT = "tool_input"
+    # Agent tool_input fields
+    MODEL = "model"
+    SUBAGENT_TYPE = "subagent_type"
