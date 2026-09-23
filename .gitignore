@@ -18,27 +18,11 @@
 
 # === Language: Python ===
 __pycache__/
-plugins/mnemic/memory/.venv/
-plugins/mnemic/memory/.mypy_cache/
-plugins/mnemic/memory/.pytest_cache/
-plugins/mnemic/memory/.ruff_cache/
-plugins/mnemic/engine/.venv/
-plugins/mnemic/engine/.mypy_cache/
-plugins/mnemic/engine/.pytest_cache/
-plugins/mnemic/engine/.ruff_cache/
-plugins/mnemic/engine/build/
 *.egg-info/
 
 # === Project ===
 # Git worktrees
 .worktrees/
-# Wiki runtime data (per-machine, regenerated each run)
-/lint/
-/wiki/
-/sources/
-/daily/
-wiki/
-sources/
 # Pinned upstream superpowers repos (obra/pcvelz) kept locally for diffing —
 # embedded git repos; also ignored here (root) so they stay out of the release tree
 plugins/development/.ref/
